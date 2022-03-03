@@ -1,9 +1,22 @@
 import argparse
-import nmap
 import sys
 import datetime
 import os
 import time
+try:
+    import nmap
+except:
+    print("\033[1;31;40m[-] Error: python-nmap is not installed. You can install it now (must be sudo)\033[0;37;40m")
+    choice_nmap = input("\033[1;35;40m[*] Install python-nmap? y/n [y]: \033[0;37;40m" or 'y')
+    if(choice_nmap == 'y'):
+        choice_pip = input("\033[1;35;40m[*] This operation requires pip3. Install python3-pip? (requires sudo) y/n [n]: \033[0;37;40m" or 'n')
+        if(choice_pip == 'y'):
+            os.system("%sapt install -y python3-pip" % ("sudo " if os.getuid() else ""))
+        os.system("pip3 install python-nmap")
+    else:
+        print("\033[1;31;40m[-] Quitting...\033[0;37;40m")
+        sys.exit(0)
+import nmap
 
 ###############################################################
 #
@@ -59,9 +72,13 @@ def show_hosts(hosts_list, message):
 ###############################################################
 def find_active_hosts(hosts_list):
     nm = []
+    if not os.path.isdir("./hosts"):
+        os.system("mkdir hosts")
     for num, host in enumerate(hosts_list):
+        if not os.path.isdir("./hosts/%s" % (host.replace('/','-'))):
+            os.system("mkdir ./hosts/%s" % (host.replace('/','-')))
         nm.append(nmap.PortScanner())
-        nm[num].scan(hosts=host, arguments='-sn -PE -PP -PM -oN %s-pingsweep.nmap' %(host.replace('/','-')))
+        nm[num].scan(hosts=host, arguments='-sn -PE -PP -PM -oN hosts/%s/%s-pingsweep.nmap' %(host.replace('/','-'), host.replace('/','-')))
         #print(nm[num].csv())
     active_hosts = []
     inactive_hosts = []
@@ -133,7 +150,7 @@ def gobuster_test(web_apps):
         pass
     for host in web_apps:
         print('\033[1;36;40m[*] Running gobuster against %s://%s\033[0;37;40m' % (host[1], host[0]))
-        os.system('gobuster dir -e -r -u %s://%s -w %s --wildcard -v -k > %s/gobuster-results-%s-%s.txt' % (host[1], host[0], wordlist, gb_path, host[0], host[1])) 
+        os.system('gobuster dir -e -r -u %s://%s -w %s --wildcard -v -k > hosts/%s/gobuster-results-%s-%s.txt' % (host[1], host[0], wordlist, host[1], host[0], host[1])) 
         print('\033[1;32;40m[+] Completed gobuster scan for %s://%s\033[0;37;40m' % (host[1], host[0]))
 
 
@@ -150,7 +167,7 @@ def nikto_test(web_apps):
         os.system('mkdir %s' % nikto_path)
     for host in web_apps:
         print('\033[1;36;40m[*] Running nikto against %s://%s\033[0;37;40m' % (host[1], host[0]))
-        os.system('nikto -host %s://%s > %s/nikto-results-%s-%s.txt' % (host[1], host[0], nikto_path, host[0], host[1]))
+        os.system('nikto -host %s://%s > hosts/%s/nikto-results-%s-%s.txt' % (host[1], host[0], host[1], host[0], host[1]))
         print('\033[1;32;40m[+] Completed nikto scan for %s://%s\033[0;37;40m' % (host[1], host[0]))
 
 
@@ -166,26 +183,59 @@ def nikto_test(web_apps):
 #
 ###############################################################
 #def nmap_scan(host_list, top_ports, tcp):
-def nmap_scan(filename, top_ports, tcp):
+def nmap_scan(filename, top_ports='-p1-65535', tcp=True, single_file=False):
     nm = nmap.PortScanner()
-    args = '-Pn -sV --top-ports %d -oN %s%s-scan-top%d.nmap -i %s' % (top_ports, filename, '' if tcp else '-udp', top_ports, filename)
-    #for num, host in enumerate(host_list):
-    #    nm.append(nmap.PortScanner())
-    print('\033[1;36;40m[*] Running nmap scan of the top %d ports\033[0;37;40m' % (top_ports))
-    #if tcp:
-    #    nm.scan(arguments='-Pn -sV --top-ports %d -oN %s-scan-top%d.nmap -i %s' %(top_ports, filename, top_ports, filename))
-    #else:
-    #    nm.scan(arguments='-Pn -sU -sV --top-ports %d -oN %s-udp-scan-top%d.nmap -i %s' %(top_ports, filename, top_ports, filename))
-    try:
-        nm.scan(arguments=args)
-    except nmap.PortScannerError:
-        print('\033[1;31;40m[-] Port scan failed, re-trying...\033[0;37;40m')
-        time.sleep(2)
+    if not os.path.isdir("./hosts"):
+        os.system("mkdir ./hosts")
+    if single_file:
+        print('\033[1;36;40m[*] Outputting as a single file\033[0;37;40m')
+        args = '-Pn -sV -O %s -oN hosts/%s%s-scan-%s.nmap -iL %s' % (top_ports, filename, '' if tcp else '-udp', top_ports.replace(',','_'), filename)
+        print('\033[1;36;40m[*] Running nmap scan of ports %s\033[0;37;40m' % (top_ports))
         try:
             nm.scan(arguments=args)
         except nmap.PortScannerError:
-            print('\033[1;31;40m[-] Port scan failed again, quitting...\033[0;37;40m')
-            sys.exit(1)
+            print('\033[1;31;40m[-] Port scan failed, re-trying...\033[0;37;40m')
+            time.sleep(2)
+            try:
+                nm.scan(arguments=args)
+            except nmap.PortScannerError:
+                print('\033[1;31;40m[-] Port scan failed again, quitting...\033[0;37;40m')
+                sys.exit(1)
+        f= open('./hosts/%s-scan-%s%s.csv' % (filename, top_ports.replace(',','_'), '' if tcp else '-udp'), 'w')
+        f.write(nm.csv())
+        f.close()
+    else:
+        with open(filename) as fp:
+            hosts = fp.readlines()
+            for h in hosts:
+                host = h.rstrip()
+                if not os.path.isdir("./hosts/%s" % (host.replace('/','-'))):
+                    os.system("mkdir ./hosts/%s" % (host.replace('/','-')))
+                print('\033[1;36;40m[*] Running nmap scan of ports %s on %s\033[0;37;40m' % (top_ports, host))
+                args = '-Pn -sV -O %s -oN hosts/%s/%s%s-scan-%s.nmap %s' % (top_ports, host.replace('/','-'), host.replace('/','-'), '' if tcp else '-udp', top_ports.replace(',','_'), host)
+                try:
+                    nm.scan(arguments=args)
+                    f= open('%s-scan-%s%s.csv' % (host.replace('/','-'), top_ports.replace(',','_'), '' if tcp else '-udp'), 'w')
+                    f.write(nm.csv())
+                    f.close()
+                    print('\033[1;36;40m[*] Success\033[0;37;40m')
+                except nmap.PortScannerError as e:
+                    print(e)
+                    print('\033[1;31;40m[-] Port scan for %s failed, re-trying...\033[0;37;40m' % (host))
+                    try:
+                        nm.scan(arguments=args)
+                        print('\033[1;36;40m[*] Success\033[0;37;40m')
+                        f.write(nm.csv)
+                        f.close()
+                    except nmap.PortScannerError:
+                        print('\033[1;31;40m[-] Port scan failed again, skipping...\033[0;37;40m')
+                        pass 
+                f= open('./hosts/%s/%s-scan-%s%s.csv' % (host.replace('/','-'), host.replace('/','-'), top_ports.replace(',','_'), '' if tcp else '-udp'), 'w')
+    
+    if not os.path.isdir("./csv_reports"):
+        os.system("mkdir csv_reports")
+    os.system("mv *.csv ./csv_reports/")
+
     print('\033[1;32;40m[+] Completed nmap scan\033[0;37;40m')
     return nm
 
@@ -196,31 +246,82 @@ def nmap_scan(filename, top_ports, tcp):
 #
 ###############################################################
 def main():
-    parser = argparse.ArgumentParser(prog='autoscan.py', usage='python3 %(prog)s [hostfile]', description='Automate pentest')
-    parser.add_argument('hostfile', help='Host file - one host/CIDR per line')
+    parser = argparse.ArgumentParser(prog='autoscan.py', usage='python3 %(prog)s {-i [host]|-I [hostfile]} {-g|-n|-p [top_ports]|-f|-d|-u}', description='Automate pentest')
+    host_group = parser.add_mutually_exclusive_group(required=True)
+    host_group.add_argument('-I', help='Host file - one host/CIDR per line')
+    host_group.add_argument('-i', help='Single host')
+    parser.add_argument('-g', help='Perform gobuster scan on all web hosts', required=False, action="store_true")
+    parser.add_argument('-n', help='Perform nikto scan on all web hosts', required=False, action="store_true")
+    port_group = parser.add_mutually_exclusive_group()
+    port_group.add_argument('-p', help='Perform nmap scan of the specified ports', required=False)
+    port_group.add_argument('-P', type=int, help='Perform nmap scan of the top [x] ports', required=False)
+    port_group.add_argument('-f', help='Perform nmap scan of all ports', required=False, action="store_true")
+    port_group.add_argument('-q', help='Perform nmap ping scan only', required=False, action="store_true")
+    parser.add_argument('-d', help='Perform nmap scan of all hosts (no ping scan)', required=False, action="store_true")
+    parser.add_argument('-u', help='Perform UDP scan', required=False, action="store_true")
 
     args = parser.parse_args()
 
     current_time = datetime.datetime.now()
     uniqueID = current_time.strftime('%Y-%m-%d-%H.%M.%S')
-    outfile = uniqueID + '-active-hosts.txt'
+#    outfile = uniqueID + '-active-hosts.txt'
+#    inactive_hosts = uniqueID + '-inactive-hosts.txt'
+    outfile = 'active-hosts.txt'
+    inactive_hosts = 'inactive-hosts.txt'
+    active = []
+    inactive = []
 
-    hosts = get_hosts(args.hostfile)
-    active, inactive = find_active_hosts(hosts)
-    show_hosts(active, "The following hosts are active:")
-    #show_hosts(inactive, "The following hosts are either down or did not respond to pings:")
-    if not active:
+    hosts = []
+    if args.i:
+        temp_file = uniqueID + '-temp-hostfile.txt'
+        f = open(temp_file, "w")
+        f.write(args.i)
+        f.close()
+        hosts = get_hosts(temp_file)
+        os.system('rm %s' % (temp_file))
+
+    if args.I:
+        hosts = get_hosts(args.I)
+
+    if not args.d:
+        active, inactive = find_active_hosts(hosts)     # ping scan (get a list of active and inactive hosts)
+        show_hosts(active, "The following hosts are active:")
+    elif args.d:
+        active = hosts
+        outfile = 'tmp_all_hosts.txt'
+
+    if not active:      # if the active hosts array is empty, scan all hosts
         active = hosts
         show_hosts(active, "Either all hosts are down or are not responding to pings. The following hosts will be tested:")
+
     write_hosts(active, outfile)
-    #write_hosts(active, uniqueID, "inactive")
-    nm_tcp_1000 = nmap_scan(outfile, 1000, True)
-    webapps = find_web_apps(nm_tcp_1000)
-    gobuster_test(webapps)
-    nikto_test(webapps)
-    #nm_tcp_all = nmap_scan(outfile, 65535, True)
-    #nm_udp_1000 = nmap_scan(outfile, 1000, False)
-    #nm_udp_all = nmap_scan(outfile, 65535, False)
+    write_hosts(inactive, inactive_hosts)
+
+    scan_file = outfile
+    #if args.d:
+    #    scan_file = inactive_hosts
+
+    nm_tcp = []
+    if args.f:
+        nm_tcp = nmap_scan(scan_file, '-p1-65535', not args.u)
+    elif args.p:
+        nm_tcp = nmap_scan(scan_file, '-p' + args.p, not args.u)
+    elif args.q:
+        pass
+    elif args.P:
+        nm_tcp = nmap_scan(scan_file, '--top-ports %d' % (args.P), not args.u)
+    else:
+        nm_tcp = nmap_scan(scan_file, '-p1-65535', not args.u)
+    
+    if nm_tcp:
+        webapps = find_web_apps(nm_tcp)
+
+    if args.g:
+        gobuster_test(webapps)
+
+    if args.n:
+        nikto_test(webapps)
+
     print('\033[2;32;40m[+] All tasks completed successfully\033[0;37;40m')
 
 if __name__ == '__main__':
