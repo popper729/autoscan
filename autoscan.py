@@ -132,7 +132,7 @@ def find_web_apps(nm):
 #   - each element should have the form [host, 'http'/'https']
 #
 ###############################################################
-def gobuster_test(web_apps):
+def gobuster_test(web_apps, proxy):
     wordlist = '/usr/share/wordlists/averroes/raft-small-directories-lowercase.txt' # eventually give the option to specify this
     gb_path = 'gobuster_results'
     if not os.path.exists(gb_path):
@@ -150,7 +150,7 @@ def gobuster_test(web_apps):
         pass
     for host in web_apps:
         print('\033[1;36;40m[*] Running gobuster against %s://%s\033[0;37;40m' % (host[1], host[0]))
-        os.system('gobuster dir -e -r -u %s://%s -w %s --wildcard -v -k > hosts/%s/gobuster-results-%s-%s.txt' % (host[1], host[0], wordlist, host[1], host[0], host[1])) 
+        os.system('gobuster dir -e -r -u %s://%s -w %s --wildcard -v -k%s> hosts/%s/gobuster-results-%s-%s.txt' % (host[1], host[0], wordlist, ' --proxy %s' % (proxy) if proxy else '', host[1], host[0], host[1])) 
         print('\033[1;32;40m[+] Completed gobuster scan for %s://%s\033[0;37;40m' % (host[1], host[0]))
 
 
@@ -161,13 +161,13 @@ def gobuster_test(web_apps):
 #   - each element should have the form [host, 'http'/'https']
 #
 ###############################################################
-def nikto_test(web_apps):
+def nikto_test(web_apps, proxy):
     nikto_path = 'nikto_results'
     if not os.path.exists(nikto_path):
         os.system('mkdir %s' % nikto_path)
     for host in web_apps:
         print('\033[1;36;40m[*] Running nikto against %s://%s\033[0;37;40m' % (host[1], host[0]))
-        os.system('nikto -host %s://%s > hosts/%s/nikto-results-%s-%s.txt' % (host[1], host[0], host[1], host[0], host[1]))
+        os.system('nikto -host %s://%s%s > hosts/%s/nikto-results-%s-%s.txt' % (host[1], host[0], ' -useproxy %s' % (proxy) if proxy else '', host[1], host[0], host[1]))
         print('\033[1;32;40m[+] Completed nikto scan for %s://%s\033[0;37;40m' % (host[1], host[0]))
 
 
@@ -259,6 +259,7 @@ def main():
     port_group.add_argument('-q', help='Perform nmap ping scan only', required=False, action="store_true")
     parser.add_argument('-d', help='Perform nmap scan of all hosts (no ping scan)', required=False, action="store_true")
     parser.add_argument('-u', help='Perform UDP scan', required=False, action="store_true")
+    parser.add_argument('--proxy', help='Specify proxy for gobuster/nikto [http(s)]://[host]:[port]', required=False)
 
     args = parser.parse_args()
 
@@ -270,6 +271,7 @@ def main():
     inactive_hosts = 'inactive-hosts.txt'
     active = []
     inactive = []
+    webapps = []
 
     hosts = []
     if args.i:
@@ -317,10 +319,10 @@ def main():
         webapps = find_web_apps(nm_tcp)
 
     if args.g:
-        gobuster_test(webapps)
+        gobuster_test(webapps, args.proxy)
 
     if args.n:
-        nikto_test(webapps)
+        nikto_test(webapps, args.proxy)
 
     print('\033[2;32;40m[+] All tasks completed successfully\033[0;37;40m')
 
