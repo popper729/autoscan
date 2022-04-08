@@ -114,7 +114,7 @@ def write_hosts(hosts, filename):
 ###############################################################
 def find_web_apps(nms):
     web_apps = []
-    for nm in nms
+    for nm in nms:
         for host in nm.all_hosts():
             for proto in nm[host].all_protocols():
                 if 80 in nm[host][proto].keys():
@@ -217,7 +217,7 @@ def nmap_scan(filename, top_ports='-p1-65535', tcp=True, single_file=False):
                 if not os.path.isdir("./hosts/%s" % (host.replace('/','-'))):
                     os.system("mkdir ./hosts/%s" % (host.replace('/','-')))
                 print('\033[1;36;40m[*] Running nmap scan of ports %s on %s\033[0;37;40m' % (top_ports, host))
-                args = '-Pn -sV -O %s -oN hosts/%s/%s%s-scan-%s.nmap %s' % (top_ports, host.replace('/','-'), host.replace('/','-'), '' if tcp else '-udp', top_ports.replace(',','_'))
+                args = '-Pn -sV -O %s -oN hosts/%s/%s%s-scan-%s.nmap' % (top_ports, host.replace('/','-'), host.replace('/','-'), '' if tcp else '-udp', top_ports.replace(',','_'))
                 try:
                     nm.scan(host, arguments=args)
                     f= open('%s-scan-%s%s.csv' % (host.replace('/','-'), top_ports.replace(',','_'), '' if tcp else '-udp'), 'w')
