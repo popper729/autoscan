@@ -112,16 +112,17 @@ def write_hosts(hosts, filename):
 #  - nm is the PortScanner object that has done the scan
 #
 ###############################################################
-def find_web_apps(nm):
+def find_web_apps(nms):
     web_apps = []
-    for host in nm.all_hosts():
-        for proto in nm[host].all_protocols():
-            if 80 in nm[host][proto].keys():
-                print('\033[1;32;40m[+] Found web app on port 80 of %s\033[0;37;40m' % (host))
-                web_apps.append([host, 'http'])
-            if 443 in nm[host][proto].keys():
-                print('\033[1;32;40m[+] Found web app on port 443 of %s\033[0;37;40m' % (host))
-                web_apps.append([host, 'https'])
+    for nm in nms
+        for host in nm.all_hosts():
+            for proto in nm[host].all_protocols():
+                if 80 in nm[host][proto].keys():
+                    print('\033[1;32;40m[+] Found web app on port 80 of %s\033[0;37;40m' % (host))
+                    web_apps.append([host, 'http', nm[host].hostname()])
+                if 443 in nm[host][proto].keys():
+                    print('\033[1;32;40m[+] Found web app on port 443 of %s\033[0;37;40m' % (host))
+                    web_apps.append([host, 'https', nm[host].hostnams()])
     return web_apps
 
 
@@ -144,13 +145,14 @@ def gobuster_test(web_apps, proxy):
             f.open('raft-small-directories-lowercase.txt', 'r')
             wordlist = 'raft-small-directories-lowercase.txt'
         except:
-            os.system('wget raw.githubusercontent.com/Averroes/raft/master/data/wordlists/raft-small-files-lowercase.txt')
+            os.system('wget raw.githubusercontent.com/Averroes/raft/master/data/wordlists/raft-small-directories-lowercase.txt')
             wordlist = 'raft-small-directories-lowercase.txt'
             pass
         pass
     for host in web_apps:
         print('\033[1;36;40m[*] Running gobuster against %s://%s\033[0;37;40m' % (host[1], host[0]))
-        os.system('gobuster dir -e -r -u %s://%s -w %s --wildcard -v -k%s> hosts/%s/gobuster-results-%s-%s.txt' % (host[1], host[0], wordlist, ' --proxy %s' % (proxy) if proxy else '', host[1], host[0], host[1])) 
+        print('gobuster dir -e -r -u %s://%s -w %s --wildcard -v -k%s> hosts/%s/gobuster-results-%s-%s.txt' % (host[1], host[0], wordlist, ' --proxy %s' % (proxy) if proxy else '', host[2] if host[2] else host[0], host[0], host[1])) 
+        os.system('gobuster dir -e -r -u %s://%s -w %s --wildcard -v -k%s> hosts/%s/gobuster-results-%s-%s.txt' % (host[1], host[0], wordlist, ' --proxy %s' % (proxy) if proxy else '', host[2] if host[2] else host[0], host[0], host[1])) 
         print('\033[1;32;40m[+] Completed gobuster scan for %s://%s\033[0;37;40m' % (host[1], host[0]))
 
 
@@ -167,7 +169,8 @@ def nikto_test(web_apps, proxy):
         os.system('mkdir %s' % nikto_path)
     for host in web_apps:
         print('\033[1;36;40m[*] Running nikto against %s://%s\033[0;37;40m' % (host[1], host[0]))
-        os.system('nikto -host %s://%s%s > hosts/%s/nikto-results-%s-%s.txt' % (host[1], host[0], ' -useproxy %s' % (proxy) if proxy else '', host[1], host[0], host[1]))
+        print('nikto -host %s://%s%s > hosts/%s/nikto-results-%s-%s.txt' % (host[1], host[0], ' -useproxy %s' % (proxy) if proxy else '', host[2] if host[2] else host[0], host[0], host[1]))
+        os.system('nikto -host %s://%s%s > hosts/%s/nikto-results-%s-%s.txt' % (host[1], host[0], ' -useproxy %s' % (proxy) if proxy else '', host[2] if host[2] else host[0], host[0], host[1]))
         print('\033[1;32;40m[+] Completed nikto scan for %s://%s\033[0;37;40m' % (host[1], host[0]))
 
 
@@ -185,6 +188,7 @@ def nikto_test(web_apps, proxy):
 #def nmap_scan(host_list, top_ports, tcp):
 def nmap_scan(filename, top_ports='-p1-65535', tcp=True, single_file=False):
     nm = nmap.PortScanner()
+    nms = []
     if not os.path.isdir("./hosts"):
         os.system("mkdir ./hosts")
     if single_file:
@@ -204,6 +208,7 @@ def nmap_scan(filename, top_ports='-p1-65535', tcp=True, single_file=False):
         f= open('./hosts/%s-scan-%s%s.csv' % (filename, top_ports.replace(',','_'), '' if tcp else '-udp'), 'w')
         f.write(nm.csv())
         f.close()
+        nms.append(nm)
     else:
         with open(filename) as fp:
             hosts = fp.readlines()
@@ -212,9 +217,9 @@ def nmap_scan(filename, top_ports='-p1-65535', tcp=True, single_file=False):
                 if not os.path.isdir("./hosts/%s" % (host.replace('/','-'))):
                     os.system("mkdir ./hosts/%s" % (host.replace('/','-')))
                 print('\033[1;36;40m[*] Running nmap scan of ports %s on %s\033[0;37;40m' % (top_ports, host))
-                args = '-Pn -sV -O %s -oN hosts/%s/%s%s-scan-%s.nmap %s' % (top_ports, host.replace('/','-'), host.replace('/','-'), '' if tcp else '-udp', top_ports.replace(',','_'), host)
+                args = '-Pn -sV -O %s -oN hosts/%s/%s%s-scan-%s.nmap %s' % (top_ports, host.replace('/','-'), host.replace('/','-'), '' if tcp else '-udp', top_ports.replace(',','_'))
                 try:
-                    nm.scan(arguments=args)
+                    nm.scan(host, arguments=args)
                     f= open('%s-scan-%s%s.csv' % (host.replace('/','-'), top_ports.replace(',','_'), '' if tcp else '-udp'), 'w')
                     f.write(nm.csv())
                     f.close()
@@ -223,21 +228,22 @@ def nmap_scan(filename, top_ports='-p1-65535', tcp=True, single_file=False):
                     print(e)
                     print('\033[1;31;40m[-] Port scan for %s failed, re-trying...\033[0;37;40m' % (host))
                     try:
-                        nm.scan(arguments=args)
+                        nm.scan(host, arguments=args)
                         print('\033[1;36;40m[*] Success\033[0;37;40m')
-                        f.write(nm.csv)
+                        f.write(nm.csv())
                         f.close()
                     except nmap.PortScannerError:
                         print('\033[1;31;40m[-] Port scan failed again, skipping...\033[0;37;40m')
                         pass 
-                f= open('./hosts/%s/%s-scan-%s%s.csv' % (host.replace('/','-'), host.replace('/','-'), top_ports.replace(',','_'), '' if tcp else '-udp'), 'w')
+                nms.append(nm)
+                #f= open('./hosts/%s/%s-scan-%s%s.csv' % (host.replace('/','-'), host.replace('/','-'), top_ports.replace(',','_'), '' if tcp else '-udp'), 'w')
     
     if not os.path.isdir("./csv_reports"):
         os.system("mkdir csv_reports")
     os.system("mv *.csv ./csv_reports/")
 
     print('\033[1;32;40m[+] Completed nmap scan\033[0;37;40m')
-    return nm
+    return nms
 
 
 ###############################################################
