@@ -39,9 +39,10 @@ import nmap
 ###############################################################
 ENDC = '\033[0;37;08m'
 TEAL = '\033[1;36;08m'
-GREEN = '\033[1;32;40m'
-RED = '\033[1;31;40m'
-PURPLE = '\033[1;35;40m'
+GREEN = '\033[1;32;08m'
+RED = '\033[1;31;08m'
+PURPLE = '\033[1;35;08m'
+WHITE = '\033[1;37;08m'
 
 def print_info(msg):
     print('%s[*] %s%s' % (TEAL, msg, ENDC))
@@ -84,7 +85,7 @@ def get_hosts(hosts_file):
 def show_hosts(hosts_list, message):
     print_info(message)
     for host in hosts_list:
-        print_color(' [*] ' + host, TEAL)
+        print_color(' [*] ' + host, WHITE)
 
 
 ###############################################################
