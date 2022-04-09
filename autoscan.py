@@ -37,12 +37,12 @@ import nmap
 # Color setup for print statements
 #
 ###############################################################
-ENDC = '\033[0;37;08m'
-TEAL = '\033[1;36;08m'
-GREEN = '\033[1;32;08m'
-RED = '\033[1;31;08m'
-PURPLE = '\033[1;35;08m'
-WHITE = '\033[1;37;08m'
+ENDC = '\033[0;37;40m'
+TEAL = '\033[1;36;40m'
+GREEN = '\033[1;32;40m'
+RED = '\033[1;31;40m'
+PURPLE = '\033[1;35;40m'
+WHITE = '\033[1;37;40m'
 
 def print_info(msg):
     print('%s[*] %s%s' % (TEAL, msg, ENDC))
