@@ -33,6 +33,29 @@ import nmap
 
 ###############################################################
 #
+# Color setup for print statements
+#
+###############################################################
+ENDC = '\033[0;37;08m'
+TEAL = '\033[1;36;08m'
+GREEN = '\033[1;32;40m'
+RED = '\033[1;31;40m'
+PURPLE = '\033[1;35;40m'
+
+def print_info(msg):
+    print('%s[*] %s%s' % (TEAL, msg, ENDC))
+
+def print_success(msg):
+    print('%s[+] %s%s' % (GREEN, msg, ENDC))
+
+def print_err(msg):
+    print("%s[-] %s%s" % (RED, msg, ENDC))
+
+def print_color(msg, color):
+    print(color + msg + ENDC)
+
+###############################################################
+#
 # Returns the hosts file as a list of hosts
 #  - hosts_file is the name of the file that contains the
 #    different hosts (1 per line)
@@ -43,11 +66,11 @@ def get_hosts(hosts_file):
         f = open(hosts_file, 'r')
         lines = f.readlines()
         lines = [x.rstrip() for x in lines]
-        print('\033[1;36;40m[*] Hosts list generated\033[0;37;40m')
+        print_info('Hosts list generated')
         return lines
     except exception as e:
         print(e)
-        print("\033[1;31;40m[-] Host file does not exist\033[0;37;40m")
+        print_err("Host file does not exist")
         sys.exit(1)
 
 
@@ -58,9 +81,9 @@ def get_hosts(hosts_file):
 #
 ###############################################################
 def show_hosts(hosts_list, message):
-    print('\033[1;36;40m[*] %s\033[0;37;40m' %(message))
+    print_info(message)
     for host in hosts_list:
-        print('\033[1;35;40m [*] %s\033[0;37;40m' %(host))
+        print_color(TEAL + ' [*] ' + host)
 
 
 ###############################################################
@@ -118,10 +141,10 @@ def find_web_apps(nms):
         for host in nm.all_hosts():
             for proto in nm[host].all_protocols():
                 if 80 in nm[host][proto].keys():
-                    print('\033[1;32;40m[+] Found web app on port 80 of %s\033[0;37;40m' % (host))
+                    print_success('Found web app on port 80 of %s' % (host))
                     web_apps.append([host, 'http', nm[host].hostname()])
                 if 443 in nm[host][proto].keys():
-                    print('\033[1;32;40m[+] Found web app on port 443 of %s\033[0;37;40m' % (host))
+                    print_success('Found web app on port 443 of %s' % (host))
                     web_apps.append([host, 'https', nm[host].hostnams()])
     return web_apps
 
@@ -150,10 +173,10 @@ def gobuster_test(web_apps, proxy):
             pass
         pass
     for host in web_apps:
-        print('\033[1;36;40m[*] Running gobuster against %s://%s\033[0;37;40m' % (host[1], host[0]))
-        print('gobuster dir -e -r -u %s://%s -w %s --wildcard -v -k%s> hosts/%s/gobuster-results-%s-%s.txt' % (host[1], host[0], wordlist, ' --proxy %s' % (proxy) if proxy else '', host[2] if host[2] else host[0], host[0], host[1])) 
+        print_info('Running gobuster against %s://%s' % (host[1], host[0]))
+        print_info('gobuster dir -e -r -u %s://%s -w %s --wildcard -v -k%s> hosts/%s/gobuster-results-%s-%s.txt' % (host[1], host[0], wordlist, ' --proxy %s' % (proxy) if proxy else '', host[2] if host[2] else host[0], host[0], host[1])) 
         os.system('gobuster dir -e -r -u %s://%s -w %s --wildcard -v -k%s> hosts/%s/gobuster-results-%s-%s.txt' % (host[1], host[0], wordlist, ' --proxy %s' % (proxy) if proxy else '', host[2] if host[2] else host[0], host[0], host[1])) 
-        print('\033[1;32;40m[+] Completed gobuster scan for %s://%s\033[0;37;40m' % (host[1], host[0]))
+        print_success('Completed gobuster scan for %s://%s' % (host[1], host[0]))
 
 
 ###############################################################
@@ -168,10 +191,10 @@ def nikto_test(web_apps, proxy):
     if not os.path.exists(nikto_path):
         os.system('mkdir %s' % nikto_path)
     for host in web_apps:
-        print('\033[1;36;40m[*] Running nikto against %s://%s\033[0;37;40m' % (host[1], host[0]))
-        print('nikto -host %s://%s%s > hosts/%s/nikto-results-%s-%s.txt' % (host[1], host[0], ' -useproxy %s' % (proxy) if proxy else '', host[2] if host[2] else host[0], host[0], host[1]))
+        print_info('Running nikto against %s://%s' % (host[1], host[0]))
+        print_info('nikto -host %s://%s%s > hosts/%s/nikto-results-%s-%s.txt' % (host[1], host[0], ' -useproxy %s' % (proxy) if proxy else '', host[2] if host[2] else host[0], host[0], host[1]))
         os.system('nikto -host %s://%s%s > hosts/%s/nikto-results-%s-%s.txt' % (host[1], host[0], ' -useproxy %s' % (proxy) if proxy else '', host[2] if host[2] else host[0], host[0], host[1]))
-        print('\033[1;32;40m[+] Completed nikto scan for %s://%s\033[0;37;40m' % (host[1], host[0]))
+        print_success('Completed nikto scan for %s://%s' % (host[1], host[0]))
 
 
 ###############################################################
@@ -192,18 +215,18 @@ def nmap_scan(filename, top_ports='-p1-65535', tcp=True, single_file=False):
     if not os.path.isdir("./hosts"):
         os.system("mkdir ./hosts")
     if single_file:
-        print('\033[1;36;40m[*] Outputting as a single file\033[0;37;40m')
+        print_info('Outputting as a single file')
         args = '-Pn -sV -O %s -oN hosts/%s%s-scan-%s.nmap -iL %s' % (top_ports, filename, '' if tcp else '-udp', top_ports.replace(',','_'), filename)
-        print('\033[1;36;40m[*] Running nmap scan of ports %s\033[0;37;40m' % (top_ports))
+        print_info('Running nmap scan of ports %s' % (top_ports))
         try:
             nm.scan(arguments=args)
         except nmap.PortScannerError:
-            print('\033[1;31;40m[-] Port scan failed, re-trying...\033[0;37;40m')
+            print_err('Port scan failed, re-trying...')
             time.sleep(2)
             try:
                 nm.scan(arguments=args)
             except nmap.PortScannerError:
-                print('\033[1;31;40m[-] Port scan failed again, quitting...\033[0;37;40m')
+                print_err('Port scan failed again, quitting...')
                 sys.exit(1)
         f= open('./hosts/%s-scan-%s%s.csv' % (filename, top_ports.replace(',','_'), '' if tcp else '-udp'), 'w')
         f.write(nm.csv())
@@ -216,24 +239,24 @@ def nmap_scan(filename, top_ports='-p1-65535', tcp=True, single_file=False):
                 host = h.rstrip()
                 if not os.path.isdir("./hosts/%s" % (host.replace('/','-'))):
                     os.system("mkdir ./hosts/%s" % (host.replace('/','-')))
-                print('\033[1;36;40m[*] Running nmap scan of ports %s on %s\033[0;37;40m' % (top_ports, host))
+                print_info('Running nmap scan of ports %s on %s' % (top_ports, host))
                 args = '-Pn -sV -O %s -oN hosts/%s/%s%s-scan-%s.nmap' % (top_ports, host.replace('/','-'), host.replace('/','-'), '' if tcp else '-udp', top_ports.replace(',','_'))
                 try:
                     nm.scan(host, arguments=args)
                     f= open('%s-scan-%s%s.csv' % (host.replace('/','-'), top_ports.replace(',','_'), '' if tcp else '-udp'), 'w')
                     f.write(nm.csv())
                     f.close()
-                    print('\033[1;36;40m[*] Success\033[0;37;40m')
+                    print_success('Success')
                 except nmap.PortScannerError as e:
-                    print(e)
-                    print('\033[1;31;40m[-] Port scan for %s failed, re-trying...\033[0;37;40m' % (host))
+                    #print(e)
+                    print_err('Port scan for %s failed, re-trying...' % (host))
                     try:
                         nm.scan(host, arguments=args)
-                        print('\033[1;36;40m[*] Success\033[0;37;40m')
+                        print_success('Success')
                         f.write(nm.csv())
                         f.close()
                     except nmap.PortScannerError:
-                        print('\033[1;31;40m[-] Port scan failed again, skipping...\033[0;37;40m')
+                        print_err('Port scan failed again, skipping %s...' % (host))
                         pass 
                 nms.append(nm)
                 #f= open('./hosts/%s/%s-scan-%s%s.csv' % (host.replace('/','-'), host.replace('/','-'), top_ports.replace(',','_'), '' if tcp else '-udp'), 'w')
@@ -242,7 +265,7 @@ def nmap_scan(filename, top_ports='-p1-65535', tcp=True, single_file=False):
         os.system("mkdir csv_reports")
     os.system("mv *.csv ./csv_reports/")
 
-    print('\033[1;32;40m[+] Completed nmap scan\033[0;37;40m')
+    print_success('Completed nmap scan')
     return nms
 
 
@@ -330,7 +353,7 @@ def main():
     if args.n:
         nikto_test(webapps, args.proxy)
 
-    print('\033[2;32;40m[+] All tasks completed successfully\033[0;37;40m')
+    print_color('[+] All tasks completed successfully', PURPLE)
 
 if __name__ == '__main__':
     main()
