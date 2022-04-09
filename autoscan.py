@@ -3,6 +3,7 @@ import sys
 import datetime
 import os
 import time
+from shutil import which
 try:
     import nmap
 except:
@@ -68,7 +69,7 @@ def get_hosts(hosts_file):
         lines = [x.rstrip() for x in lines]
         print_info('Hosts list generated')
         return lines
-    except exception as e:
+    except Exception as e:
         print(e)
         print_err("Host file does not exist")
         sys.exit(1)
@@ -83,7 +84,7 @@ def get_hosts(hosts_file):
 def show_hosts(hosts_list, message):
     print_info(message)
     for host in hosts_list:
-        print_color(TEAL + ' [*] ' + host)
+        print_color(' [*] ' + host, TEAL)
 
 
 ###############################################################
@@ -157,6 +158,10 @@ def find_web_apps(nms):
 #
 ###############################################################
 def gobuster_test(web_apps, proxy):
+    if not which('gobuster'):
+        print_err('Gobuster v3 is required for this operation.')
+        print_err('It can be installed with the following command: sudo apt install -y snapd && sudo snap install go --classic && sudo ln -s /snap/bin/go /usr/bin/go && sudo go install github.com/OJ/gobuster/v3@latest && sudo cp root/go/bin/gobuster /usr/bin/gobuster')
+        return
     wordlist = '/usr/share/wordlists/averroes/raft-small-directories-lowercase.txt' # eventually give the option to specify this
     gb_path = 'gobuster_results'
     if not os.path.exists(gb_path):
@@ -165,17 +170,18 @@ def gobuster_test(web_apps, proxy):
         f = open(wordlist, 'r')
     except:
         try:
-            f.open('raft-small-directories-lowercase.txt', 'r')
+            f = open('raft-small-directories-lowercase.txt', 'r')
             wordlist = 'raft-small-directories-lowercase.txt'
-        except:
+        except Exception as e:
+            print(e)
             os.system('wget raw.githubusercontent.com/Averroes/raft/master/data/wordlists/raft-small-directories-lowercase.txt')
             wordlist = 'raft-small-directories-lowercase.txt'
             pass
         pass
     for host in web_apps:
         print_info('Running gobuster against %s://%s' % (host[1], host[0]))
-        print_info('gobuster dir -e -r -u %s://%s -w %s --wildcard -v -k%s> hosts/%s/gobuster-results-%s-%s.txt' % (host[1], host[0], wordlist, ' --proxy %s' % (proxy) if proxy else '', host[2] if host[2] else host[0], host[0], host[1])) 
-        os.system('gobuster dir -e -r -u %s://%s -w %s --wildcard -v -k%s> hosts/%s/gobuster-results-%s-%s.txt' % (host[1], host[0], wordlist, ' --proxy %s' % (proxy) if proxy else '', host[2] if host[2] else host[0], host[0], host[1])) 
+        print_info('gobuster dir -e -r -u \'%s://%s\' -w \'%s\' --wildcard -v -k%s> hosts/%s/gobuster-results-%s-%s.txt' % (host[1], host[0], wordlist, ' --proxy %s' % (proxy) if proxy else '', host[2] if host[2] else host[0], host[0], host[1])) 
+        os.system('gobuster dir -e -r -u \'%s://%s\' -w \'%s\' --wildcard -v -k%s> hosts/%s/gobuster-results-%s-%s.txt' % (host[1], host[0], wordlist, ' --proxy %s' % (proxy) if proxy else '', host[2] if host[2] else host[0], host[0], host[1])) 
         print_success('Completed gobuster scan for %s://%s' % (host[1], host[0]))
 
 
@@ -187,6 +193,9 @@ def gobuster_test(web_apps, proxy):
 #
 ###############################################################
 def nikto_test(web_apps, proxy):
+    if not which('nikto'):
+        print_err('Nikto is required for this operation. It can be installed with the following command: sudo apt install -y nikto')
+        print_err('If the package doesn\'t exist, add the non-free repos to sources-list')
     nikto_path = 'nikto_results'
     if not os.path.exists(nikto_path):
         os.system('mkdir %s' % nikto_path)
