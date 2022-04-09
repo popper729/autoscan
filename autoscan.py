@@ -154,7 +154,7 @@ def find_web_apps(nms):
 #
 # Runs gobuster against the hosts
 #  - web_apps is the list of web apps to test against
-#   - each element should have the form [host, 'http'/'https']
+#   - each element should have the form [host, 'http'/'https', hostname]
 #
 ###############################################################
 def gobuster_test(web_apps, proxy):
@@ -189,13 +189,13 @@ def gobuster_test(web_apps, proxy):
 #
 # Runs nikto against the hosts
 #  - web_apps is the list of web apps to test against
-#   - each element should have the form [host, 'http'/'https']
+#   - each element should have the form [host, 'http'/'https', hostname]
 #
 ###############################################################
 def nikto_test(web_apps, proxy):
     if not which('nikto'):
         print_err('Nikto is required for this operation. It can be installed with the following command: sudo apt install -y nikto')
-        print_err('If the package doesn\'t exist, add the non-free repos to sources-list')
+        print_err('If the package doesn\'t exist, add the non-free repos to /etc/apt/sources-list')
     nikto_path = 'nikto_results'
     if not os.path.exists(nikto_path):
         os.system('mkdir %s' % nikto_path)
