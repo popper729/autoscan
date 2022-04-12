@@ -141,12 +141,13 @@ def find_web_apps(nms):
     web_apps = []
     for nm in nms:
         for host in nm.all_hosts():
+            hn = nm[host].hostname() if nm[host].hostname() else host
             for proto in nm[host].all_protocols():
                 if 80 in nm[host][proto].keys():
-                    print_success('Found web app on port 80 of %s' % (host))
+                    print_success('Found web app on port 80 of %s' % (hn))
                     web_apps.append([host, 'http', nm[host].hostname()])
                 if 443 in nm[host][proto].keys():
-                    print_success('Found web app on port 443 of %s' % (host))
+                    print_success('Found web app on port 443 of %s' % (hn))
                     web_apps.append([host, 'https', nm[host].hostname()])
     return web_apps
 
@@ -182,8 +183,8 @@ def gobuster_test(web_apps, proxy):
     for host in web_apps:
         hostname = host[2] if host[2] else host[0]
         print_info('Running gobuster against %s://%s' % (host[1], hostname))
-        print_info('gobuster dir -e -r -u \'%s://%s\' -w \'%s\' --wildcard -v -k%s > hosts/%s/gobuster-results-%s-%s.txt' % (host[1], hostname, wordlist, ' --proxy %s' % (proxy) if proxy else '', hostname, hostname, host[1])) 
-        os.system('gobuster dir -e -r -u \'%s://%s\' -w \'%s\' --wildcard -v -k%s > hosts/%s/gobuster-results-%s-%s.txt' % (host[1], hostname, wordlist, ' --proxy %s' % (proxy) if proxy else '', hostname, hostname, host[1])) 
+        print_info('gobuster dir -e -r -u \'%s://%s\' -w \'%s\' --wildcard -v -k%s > hosts/%s/gobuster-results-%s-%s.txt' % (host[1], hostname, wordlist, ' --proxy %s --timeout 2' % (proxy) if proxy else '', hostname, hostname, host[1])) 
+        os.system('gobuster dir -e -r -u \'%s://%s\' -w \'%s\' --wildcard -v -k%s > hosts/%s/gobuster-results-%s-%s.txt' % (host[1], hostname, wordlist, ' --proxy %s --timeout 2' % (proxy) if proxy else '', hostname, hostname, host[1])) 
         print_success('Completed gobuster scan for %s://%s' % (host[1], hostname))
 
 
