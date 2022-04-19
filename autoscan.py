@@ -10,9 +10,10 @@ except:
     print("\033[1;31;40m[-] Error: python-nmap is not installed. You can install it now (must be sudo)\033[0;37;40m")
     choice_nmap = input("\033[1;35;40m[*] Install python-nmap? y/n [y]: \033[0;37;40m" or 'y')
     if(choice_nmap == 'y'):
-        choice_pip = input("\033[1;35;40m[*] This operation requires pip3. Install python3-pip? (requires sudo) y/n [n]: \033[0;37;40m" or 'n')
-        if(choice_pip == 'y'):
-            os.system("%sapt install -y python3-pip" % ("sudo " if os.getuid() else ""))
+        if not which('pip3'):
+            choice_pip = input("\033[1;35;40m[*] This operation requires pip3. Install python3-pip? (requires sudo) y/n [n]: \033[0;37;40m" or 'n')
+            if(choice_pip == 'y'):
+                os.system("%sapt install -y python3-pip" % ("sudo " if os.getuid() else ""))
         os.system("pip3 install python-nmap")
     else:
         print("\033[1;31;40m[-] Quitting...\033[0;37;40m")
