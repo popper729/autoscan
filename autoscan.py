@@ -183,8 +183,8 @@ def gobuster_test(web_apps, proxy):
     for host in web_apps:
         hostname = host[2] if host[2] else host[0]
         print_info('Running gobuster against %s://%s' % (host[1], hostname))
-        print_info('gobuster dir -e -r -u \'%s://%s\' -w \'%s\' --wildcard -v -k%s > hosts/%s/gobuster-results-%s-%s.txt' % (host[1], hostname, wordlist, ' --proxy %s --timeout 2' % (proxy) if proxy else '', hostname, hostname, host[1])) 
-        os.system('gobuster dir -e -r -u \'%s://%s\' -w \'%s\' --wildcard -v -k%s > hosts/%s/gobuster-results-%s-%s.txt' % (host[1], hostname, wordlist, ' --proxy %s --timeout 2' % (proxy) if proxy else '', hostname, hostname, host[1])) 
+        print_info('gobuster dir -e -r -u \'%s://%s\' -w \'%s\' --wildcard -v -k%s > hosts/%s/gobuster-results-%s-%s.txt' % (host[1], hostname, wordlist, ' --proxy %s --timeout 2ms' % (proxy) if proxy else '', hostname, hostname, host[1])) 
+        os.system('gobuster dir -e -r -u \'%s://%s\' -w \'%s\' --wildcard -v -k%s > hosts/%s/gobuster-results-%s-%s.txt' % (host[1], hostname, wordlist, ' --proxy %s --timeout 2ms' % (proxy) if proxy else '', hostname, hostname, host[1])) 
         print_success('Completed gobuster scan for %s://%s' % (host[1], hostname))
 
 
