@@ -163,8 +163,14 @@ def find_web_apps(nms):
 def gobuster_test(web_apps, proxy):
     if not which('gobuster'):
         print_err('Gobuster v3 is required for this operation.')
-        print_err('It can be installed with the following command: sudo apt install -y snapd && sudo snap install go --classic && sudo ln -s /snap/bin/go /usr/bin/go && sudo go install github.com/OJ/gobuster/v3@latest && sudo cp root/go/bin/gobuster /usr/bin/gobuster')
-        return
+        print_err('It can be installed with the following command: sudo apt install -y snapd && sudo snap install go --classic && sudo ln -s /snap/bin/go /usr/bin/go && sudo go install github.com/OJ/gobuster/v3@latest && sudo cp /root/go/bin/gobuster /usr/bin/gobuster')
+        a = input("\033[1;35;40m[*] Install now? [y/n] \033[0;37;40m")
+        if(a == 'y' or a == 'Y'):
+            os.system("sudo apt install -y snapd && sudo snap install go --classic && sudo ln -s /snap/bin/go /usr/bin/go && sudo go install github.com/OJ/gobuster/v3@latest && sudo cp /root/go/bin/gobuster /usr/bin/gobuster")
+            print_success("Gobuster was successfully installed.")
+        else:
+            print_err("Skipping the gobuster scan.")
+            return
     wordlist = '/usr/share/wordlists/averroes/raft-small-directories-lowercase.txt' # eventually give the option to specify this
     gb_path = 'gobuster_results'
     if not os.path.exists(gb_path):
@@ -199,6 +205,18 @@ def gobuster_test(web_apps, proxy):
 def nikto_test(web_apps, proxy):
     if not which('nikto'):
         print_err('Nikto is required for this operation. It can be installed with the following command: sudo apt install -y nikto')
+        a = input("\033[1;35;40m[*] Install now? [y/n] \033[0;37;40m")
+        if(a == 'y' or a == 'Y'):
+            os.system("sudo apt update && sudo apt install -y nikto")
+            if not which('nikto'):
+                print_err('The package wasn\'t installed. Please add the non-free repos to /etc/apt/sources-list')
+                print_err('Skipping the nikto scan')
+                return
+            else:
+                print_success("Nikto was successfully installed.")
+        else:
+            print_err("Skipping the nikto scan.")
+            return
         print_err('If the package doesn\'t exist, add the non-free repos to /etc/apt/sources-list')
     nikto_path = 'nikto_results'
     if not os.path.exists(nikto_path):
