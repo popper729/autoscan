@@ -311,7 +311,7 @@ def nmap_scan(filename, top_ports='-p1-65535', tcp=True, single_file=False):
 #
 ###############################################################
 def main():
-    parser = argparse.ArgumentParser(prog='autoscan.py', usage='python3 %(prog)s {-i [host]|-I [hostfile]} {-g|-n|-p [top_ports]|-f|-d|-u}', description='Automate pentest')
+    parser = argparse.ArgumentParser(prog='autoscan.py', usage='python3 %(prog)s {-i [host]|-I [hostfile]} {-g|-n|-p [ports]|-P [top_ports]|-f|-d|-u|-q} {--proxy [http(s)]://[host][port]}', description='Automate scanning for pentests')
     host_group = parser.add_mutually_exclusive_group(required=True)
     host_group.add_argument('-I', help='Host file - one host/CIDR per line')
     host_group.add_argument('-i', help='Single host')
