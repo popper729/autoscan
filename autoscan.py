@@ -98,6 +98,8 @@ def show_hosts(hosts_list, message):
 ###############################################################
 def find_active_hosts(hosts_list):
     nm = []
+    active_hosts = []
+    inactive_hosts = []
     if not os.path.isdir("./hosts"):
         os.system("mkdir hosts")
     for num, host in enumerate(hosts_list):
@@ -105,12 +107,11 @@ def find_active_hosts(hosts_list):
             os.system("mkdir ./hosts/%s" % (host.replace('/','-')))
         nm.append(nmap.PortScanner())
         nm[num].scan(hosts=host, arguments='-sn -PE -PP -PM -oN hosts/%s/%s-pingsweep.nmap' %(host.replace('/','-'), host.replace('/','-')))
+        scanned_hosts = [(x, nm[num][x]['status']['state']) for x in nm[num].all_hosts()]
         #print(nm[num].csv())
-    active_hosts = []
-    inactive_hosts = []
-    for scan in nm:
-        scanned_hosts = [(x, scan[x]['status']['state']) for x in scan.all_hosts()]
-        for host, status in scanned_hosts:
+    #for scan in nm:
+        #scanned_hosts = [(x, scan[x]['status']['state']) for x in scan.all_hosts()]
+        for host_name, status in scanned_hosts:
             if status == 'up':
                 active_hosts.append(host)
             else:
