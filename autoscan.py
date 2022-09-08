@@ -97,6 +97,7 @@ def show_hosts(hosts_list, message):
 #
 ###############################################################
 def find_active_hosts(hosts_list):
+    print_info("Finding active hosts")
     nm = []
     active_hosts = []
     inactive_hosts = []
@@ -150,6 +151,7 @@ def write_hosts(hosts, filename):
 ###############################################################
 def find_web_apps(nms):
     web_apps = []
+    print_info("Discovring web apps")
     for nm in nms:
         for host in nm.all_hosts():
             hn = nm[host].hostname() if nm[host].hostname() else host
@@ -181,6 +183,7 @@ def gobuster_test(web_apps, proxy):
         else:
             print_err("Skipping the gobuster scan.")
             return
+    print_info("Starting gobuster scans")
     wordlist = '/usr/share/wordlists/averroes/raft-small-directories-lowercase.txt' # eventually give the option to specify this
     gb_path = 'gobuster_results'
     if not os.path.exists(gb_path):
@@ -229,6 +232,7 @@ def nikto_test(web_apps, proxy):
             return
         print_err('If the package doesn\'t exist, add the non-free repos to /etc/apt/sources-list')
     nikto_path = 'nikto_results'
+    print_info("Starting nikto scans")
     if not os.path.exists(nikto_path):
         os.system('mkdir %s' % nikto_path)
     for host in web_apps:
@@ -263,6 +267,7 @@ def amass_enum(hosts, amass_file):
         else:
             print_err("Skipping the amass scan.")
             return
+    print_info("Starting amass enumeration")
     args = ''
     for host in hosts:
         args += ' -d %s' % (host)
@@ -283,6 +288,7 @@ def amass_enum(hosts, amass_file):
 #def nmap_scan(host_list, top_ports, tcp):
 def nmap_scan(filename, top_ports='-p1-65535', tcp=True, single_file=False):
     #nm = nmap.PortScanner()
+    print_info("Starting nmap scans")
     nms = []
     if not os.path.isdir("./hosts"):
         os.system("mkdir ./hosts")
