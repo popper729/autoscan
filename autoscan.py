@@ -118,7 +118,7 @@ def find_active_hosts(hosts_list):
             else:
                 inactive_hosts.append(host)
         #print(scanned_hosts)
-    return active_hosts, inactive_hosts
+    return [active_hosts, inactive_hosts]
 
 ###############################################################
 # 
@@ -151,7 +151,7 @@ def write_hosts(hosts, filename):
 ###############################################################
 def find_web_apps(nms):
     web_apps = []
-    print_info("Discovring web apps")
+    print_info("Discovering web apps")
     for nm in nms:
         for host in nm.all_hosts():
             hn = nm[host].hostname() if nm[host].hostname() else host
@@ -258,7 +258,7 @@ def amass_enum(hosts, amass_file):
             os.system("%ssnap install amass" % ("sudo " if os.getuid() else ""))
             if not which('amass'):
                 os.system("%sapt update && %sapt install -y snapd && %ssnap install amass" % ("sudo " if os.getuid() else "", "sudo " if os.getuid() else "", "sudo " if os.getuid() else ""))
-                if not which('amass')
+                if not which('amass'):
                     print_err('The package was not installed. Please check for system-specific installation instructions.')
                     print_err('Skipping the amass scan')
                     return
