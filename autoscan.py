@@ -125,6 +125,7 @@ def find_active_hosts(hosts_list):
 #
 ###############################################################
 def rem_hosts(hosts):
+    print_info("Removing inactive hosts")
     for host in hosts:
         os.system('rm -rf ./hosts/%s' % (host))
 
@@ -175,7 +176,7 @@ def gobuster_test(web_apps, proxy):
         print_err('It can be installed with the following command: sudo apt install -y snapd && sudo snap install go --classic && sudo ln -s /snap/bin/go /usr/bin/go && sudo go install github.com/OJ/gobuster/v3@latest && sudo cp /root/go/bin/gobuster /usr/bin/gobuster')
         a = input("\033[1;35;40m[*] Install now? [y/n] \033[0;37;40m")
         if(a == 'y' or a == 'Y'):
-            os.system("sudo apt install -y snapd && sudo snap install go --classic && sudo ln -s /snap/bin/go /usr/bin/go && sudo go install github.com/OJ/gobuster/v3@latest && sudo cp /root/go/bin/gobuster /usr/bin/gobuster")
+            os.system("%sapt install -y snapd && %ssnap install go --classic && %sln -s /snap/bin/go /usr/bin/go && %sgo install github.com/OJ/gobuster/v3@latest && %scp /root/go/bin/gobuster /usr/bin/gobuster" % ("sudo " if os.getuid() else "", "sudo " if os.getuid() else "", "sudo " if os.getuid() else "", "sudo " if os.getuid() else "", "sudo " if os.getuid() else ""))
             print_success("Gobuster was successfully installed.")
         else:
             print_err("Skipping the gobuster scan.")
@@ -216,7 +217,7 @@ def nikto_test(web_apps, proxy):
         print_err('Nikto is required for this operation. It can be installed with the following command: sudo apt install -y nikto')
         a = input("\033[1;35;40m[*] Install now? [y/n] \033[0;37;40m")
         if(a == 'y' or a == 'Y'):
-            os.system("sudo apt update && sudo apt install -y nikto")
+            os.system("%sapt update && %sapt install -y nikto" % ("sudo " if os.getuid() else "", "sudo " if os.getuid() else ""))
             if not which('nikto'):
                 print_err('The package wasn\'t installed. Please add the non-free repos to /etc/apt/sources-list')
                 print_err('Skipping the nikto scan')
@@ -246,6 +247,22 @@ def nikto_test(web_apps, proxy):
 #
 ###############################################################
 def amass_enum(hosts, amass_file):
+    if not which('amass'):
+        print_err('Amass is required for this operation. It can be installed with the following command: sudo snap install amass')
+        a = input("\033[1;35;40m[*] Install now? [y/n] \033[0;37;40m")
+        if(a == 'y' or a == 'Y'):
+            os.system("%ssnap install amass" % ("sudo " if os.getuid() else ""))
+            if not which('amass'):
+                os.system("%sapt update && %sapt install -y snapd && %ssnap install amass" % ("sudo " if os.getuid() else "", "sudo " if os.getuid() else "", "sudo " if os.getuid() else ""))
+                if not which('amass')
+                    print_err('The package was not installed. Please check for system-specific installation instructions.')
+                    print_err('Skipping the amass scan')
+                    return
+                else:
+                    print_success("Amass was successfully installed.")
+        else:
+            print_err("Skipping the amass scan.")
+            return
     args = ''
     for host in hosts:
         args += ' -d %s' % (host)
