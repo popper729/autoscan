@@ -240,9 +240,9 @@ def nikto_test(web_apps, proxy):
 def amass_enum(hosts, amass_file):
     args = ''
     for host in hosts:
-        args += '-d %s' % (host)
+        args += ' -d %s' % (host)
     print(args)
-    os.system("amass enum -passive %s -o %s" % (args, amass_file))
+    os.system("amass enum -passive%s -o %s" % (args, amass_file))
 
 ###############################################################
 #
