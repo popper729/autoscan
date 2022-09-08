@@ -232,6 +232,20 @@ def nikto_test(web_apps, proxy):
 
 ###############################################################
 #
+# Runs amass enum
+#  - hosts is the generated host list
+#  - amass_file is the output file for the enum
+#
+###############################################################
+def amass_enum(hosts, amass_file):
+    args = ''
+    for host in hosts:
+        args += '-d %s' % (host)
+    print(args)
+    os.system("amass enum -passive %s -o %s" % (args, amass_file))
+
+###############################################################
+#
 # Performs an nmap scan on known available hosts
 # Works best on available hosts, will take much longer
 # if IPs are included that belong to unavailable/
@@ -318,6 +332,7 @@ def main():
     host_group.add_argument('-i', help='Single host')
     parser.add_argument('-g', help='Perform gobuster scan on all web hosts', required=False, action="store_true")
     parser.add_argument('-n', help='Perform nikto scan on all web hosts', required=False, action="store_true")
+    parser.add_argument('-a', help='Perform amass enumeration (amass enum -passive)', required=False, action="store_true")
     port_group = parser.add_mutually_exclusive_group()
     port_group.add_argument('-p', help='Perform nmap scan of the specified ports', required=False)
     port_group.add_argument('-P', type=int, help='Perform nmap scan of the top [x] ports', required=False)
@@ -350,6 +365,13 @@ def main():
 
     if args.I:
         hosts = get_hosts(args.I)
+
+    if args.a:
+        amass_file = "amass-enum-autoscan.txt"
+        amass_enum(hosts, amass_file)
+        tmp = hosts + get_hosts(amass_file)
+        hosts = [*set(tmp)]
+        print(hosts)
 
     if not args.d:
         active, inactive = find_active_hosts(hosts)     # ping scan (get a list of active and inactive hosts)
