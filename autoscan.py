@@ -119,6 +119,14 @@ def find_active_hosts(hosts_list):
         #print(scanned_hosts)
     return active_hosts, inactive_hosts
 
+###############################################################
+# 
+# Remove inactive hosts
+#
+###############################################################
+def rem_hosts(hosts):
+    for host in hosts:
+        os.system('rm -rf ./hosts/%s' % (host))
 
 ###############################################################
 #
@@ -241,7 +249,7 @@ def amass_enum(hosts, amass_file):
     args = ''
     for host in hosts:
         args += ' -d %s' % (host)
-    print(args)
+    #print(args)
     os.system("amass enum -passive%s -o %s" % (args, amass_file))
 
 ###############################################################
@@ -371,11 +379,12 @@ def main():
         amass_enum(hosts, amass_file)
         tmp = hosts + get_hosts(amass_file)
         hosts = [*set(tmp)]
-        print(hosts)
+        #print(hosts)
 
     if not args.d:
         active, inactive = find_active_hosts(hosts)     # ping scan (get a list of active and inactive hosts)
         show_hosts(active, "The following hosts are active:")
+        rem_hosts(inactive)
     elif args.d:
         active = hosts
         outfile = 'tmp_all_hosts.txt'
