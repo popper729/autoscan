@@ -22,13 +22,15 @@ import nmap
 
 ###############################################################
 #
-# Initial setup of a pen test
-# 1. Find online hosts (ping sweep, TCP host discovery) (functionality added)
-# 2. Nmap of top 1000 ports on active IPs (TCP and UDP) (functionality added)
-# 3. Nmap of all ports on active IPs (TCP and UDP) (functionality added)
-# 4. DNS/Reverse DNS lookup (if applicable)
-# 5. gobuster against web apps (working on code to find web apps)
-# 6. nikto against web apps
+# Functionality:
+# 1. Find online hosts (ping sweep, TCP host discovery)
+# 2. Nmap of top x ports on active IPs (TCP and UDP)
+# 3. Nmap of all ports on active IPs (TCP and UDP)
+# 4. Nmap of certain ports on active IPs (TCP and UDP)
+# 5. DNS/Reverse DNS lookup (if applicable)
+# 6. gobuster against web apps (working on code to find web apps)
+# 7. nikto against web apps
+# 8. amass enumeration to discover additional hosts
 #
 ###############################################################
 
@@ -109,15 +111,11 @@ def find_active_hosts(hosts_list):
         nm.append(nmap.PortScanner())
         nm[num].scan(hosts=host, arguments='-sn -PE -PP -PM -oN hosts/%s/%s-pingsweep.nmap' %(host.replace('/','-'), host.replace('/','-')))
         scanned_hosts = [(x, nm[num][x]['status']['state']) for x in nm[num].all_hosts()]
-        #print(nm[num].csv())
-    #for scan in nm:
-        #scanned_hosts = [(x, scan[x]['status']['state']) for x in scan.all_hosts()]
+        inactive_hosts.append(host)
         for host_name, status in scanned_hosts:
             if status == 'up':
                 active_hosts.append(host)
-            else:
-                inactive_hosts.append(host)
-        #print(scanned_hosts)
+                inactive_hosts.remove(host)
     return [active_hosts, inactive_hosts]
 
 ###############################################################
@@ -271,7 +269,6 @@ def amass_enum(hosts, amass_file):
     args = ''
     for host in hosts:
         args += ' -d %s' % (host)
-    #print(args)
     os.system("amass enum -passive%s -o %s" % (args, amass_file))
 
 ###############################################################
@@ -287,7 +284,6 @@ def amass_enum(hosts, amass_file):
 ###############################################################
 #def nmap_scan(host_list, top_ports, tcp):
 def nmap_scan(filename, top_ports='-p1-65535', tcp=True, single_file=False):
-    #nm = nmap.PortScanner()
     print_info("Starting nmap scans")
     nms = []
     if not os.path.isdir("./hosts"):
@@ -327,21 +323,17 @@ def nmap_scan(filename, top_ports='-p1-65535', tcp=True, single_file=False):
                     f.write(nm.csv())
                     f.close()
                     print_success('Success')
-                    #nms.append(nm)
                 except nmap.PortScannerError as e:
-                    #print(e)
                     print_err('Port scan for %s failed, re-trying...' % (host))
                     try:
                         nm.scan(host, arguments=args)
                         print_success('Success')
                         f.write(nm.csv())
                         f.close()
-                        #nms.append(nm)
                     except nmap.PortScannerError:
                         print_err('Port scan failed again, skipping %s...' % (host))
                         pass 
                 nms.append(nm)
-                #f= open('./hosts/%s/%s-scan-%s%s.csv' % (host.replace('/','-'), host.replace('/','-'), top_ports.replace(',','_'), '' if tcp else '-udp'), 'w')
     
     if not os.path.isdir("./csv_reports"):
         os.system("mkdir csv_reports")
@@ -377,8 +369,6 @@ def main():
 
     current_time = datetime.datetime.now()
     uniqueID = current_time.strftime('%Y-%m-%d-%H.%M.%S')
-#    outfile = uniqueID + '-active-hosts.txt'
-#    inactive_hosts = uniqueID + '-inactive-hosts.txt'
     outfile = 'active-hosts.txt'
     inactive_hosts = 'inactive-hosts.txt'
     active = []
@@ -402,7 +392,6 @@ def main():
         amass_enum(hosts, amass_file)
         tmp = hosts + get_hosts(amass_file)
         hosts = [*set(tmp)]
-        #print(hosts)
 
     if not args.d:
         active, inactive = find_active_hosts(hosts)     # ping scan (get a list of active and inactive hosts)
@@ -420,8 +409,6 @@ def main():
     write_hosts(inactive, inactive_hosts)
 
     scan_file = outfile
-    #if args.d:
-    #    scan_file = inactive_hosts
 
     nm_tcp = []
     if args.f:
