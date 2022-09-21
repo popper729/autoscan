@@ -1,8 +1,9 @@
 import argparse
 import sys
 import datetime
-import os
+import os, grp, pwd
 import time
+import ipaddress
 from shutil import which
 try:
     import nmap
@@ -33,7 +34,6 @@ import nmap
 # 8. amass enumeration to discover additional hosts
 #
 ###############################################################
-
 
 ###############################################################
 #
@@ -67,10 +67,25 @@ def print_color(msg, color):
 #
 ###############################################################
 def get_hosts(hosts_file):
+    lines = []
     try:
         f = open(hosts_file, 'r')
-        lines = f.readlines()
-        lines = [x.rstrip() for x in lines]
+        tmp = f.readlines()
+        tmp = [x.rstrip() for x in tmp]
+        for line in tmp:
+            if '/' in line:
+                print_info("CIDR found")
+                tmp = expand_cidr(line)
+                for i in tmp:
+                    lines.append(i)
+            elif '-' in line:
+                print_info("Range found")
+                tmp = expand_range(line)
+                for i in tmp:
+                    lines.append(i)
+            else:
+                print_info("Normal IP found")
+                lines.append(line)
         print_info('Hosts list generated')
         return lines
     except Exception as e:
@@ -78,6 +93,36 @@ def get_hosts(hosts_file):
         print_err("Host file does not exist")
         sys.exit(1)
 
+###############################################################
+#
+# Expands a cidr notation string into a list of hosts
+#
+###############################################################
+def expand_cidr(cidr):
+    print_info("Expanding CIDR")
+    ips = []
+    temp = ipaddress.ip_network(cidr).hosts()
+    print_info("Hosts found")
+    for host in temp:
+        ips.append(format(host))
+    return ips
+
+###############################################################
+#
+# Expands a range of IP addresses into a list of hosts
+#
+###############################################################
+def expand_range(ran):
+    ips = []
+    tmp = ran.split('.')
+    for word in tmp:
+        if '-' in word:
+            start,end = word.split('-')
+            start = int(start)
+            end = int(end)
+            for i in range(end - start + 1):
+                ips.append("%s.%s.%s.%d" % (tmp[0], tmp[1], tmp[2], i+start))
+    return ips
 
 ###############################################################
 #
@@ -89,7 +134,6 @@ def show_hosts(hosts_list, message):
     print_info(message)
     for host in hosts_list:
         print_color(' [*] ' + host, WHITE)
-
 
 ###############################################################
 #
@@ -140,7 +184,6 @@ def write_hosts(hosts, filename):
     for host in hosts:
         f.write('%s\n' %(host))
 
-
 ###############################################################
 #
 # Find the web apps amond the known hosts
@@ -162,6 +205,21 @@ def find_web_apps(nms):
                     web_apps.append([host, 'https', nm[host].hostname()])
     return web_apps
 
+###############################################################
+#
+# General cleanup at the end of the scan
+#  - Change ownership of files from root to user
+#
+###############################################################
+def cleanup():
+    print_info("Cleaning up...")
+    stat_info = os.stat('.')
+    uid = stat_info.st_uid
+    gid = stat_info.st_gid
+    user = pwd.getpwuid(uid)[0]
+    group = grp.getgrgid(gid)[0]
+    os.system("chown -R %s:%s ." % (user, group))
+    print_info("All clean!")
 
 ###############################################################
 #
@@ -430,6 +488,8 @@ def main():
 
     if args.n:
         nikto_test(webapps, args.proxy)
+
+    cleanup()
 
     print_color('[+] All tasks completed successfully', PURPLE)
 
