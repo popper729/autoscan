@@ -74,15 +74,24 @@ def get_hosts(hosts_file):
         tmp = [x.rstrip() for x in tmp]
         for line in tmp:
             if '/' in line:
-                print_info("CIDR found")
-                tmp = expand_cidr(line)
-                for i in tmp:
-                    lines.append(i)
+                try:
+                    ip = ipaddress.IPv4Network(line)
+                    print_info("CIDR found")
+                    tmp = expand_cidr(line)
+                    for i in tmp:
+                        lines.append(i)
+                except:
+                    lines.append(line)
             elif '-' in line:
-                print_info("Range found")
-                tmp = expand_range(line)
-                for i in tmp:
-                    lines.append(i)
+                tmp = line.split('-')
+                try:
+                    ip = ipaddress.ip_address(tmp[0])
+                    print_info("Range found")
+                    tmp = expand_range(line)
+                    for i in tmp:
+                        lines.append(i)
+                except:
+                    lines.append(line)
             else:
                 print_info("Normal IP found")
                 lines.append(line)
@@ -223,6 +232,27 @@ def cleanup():
 
 ###############################################################
 #
+# Hugo template
+#  - Write an index.md for hugo site
+#
+###############################################################
+def hugo_leaf(host):
+    path = './hosts/%s/index.md' % (host.replace('/','-'))
+    f = open(path, 'w')
+    f.write(
+            '''
+---
+title: %s
+---
+
+%s
+            ''' % (host, host)
+            )
+    f.close()
+    os.system("echo \"\n[%s](%s)\" >> ./hosts/_index.md" % (host, host))
+
+###############################################################
+#
 # Runs gobuster against the hosts
 #  - web_apps is the list of web apps to test against
 #   - each element should have the form [host, 'http'/'https', hostname]
@@ -257,7 +287,7 @@ def gobuster_test(web_apps, proxy):
             pass
         pass
     for host in web_apps:
-        hostname = host[2] if host[2] else host[0]
+        hostname = host[2] if host[2] and os.path.isdir("./hosts/%s" % (host[2])) else host[0]
         print_info('Running gobuster against %s://%s' % (host[1], hostname))
         print_info('gobuster dir -e -r -u \'%s://%s\' -w \'%s\' --wildcard -v -k%s > hosts/%s/gobuster-results-%s-%s.txt' % (host[1], hostname, wordlist, ' --proxy %s --timeout 2ms' % (proxy) if proxy else '', hostname, hostname, host[1])) 
         os.system('gobuster dir -e -r -u \'%s://%s\' -w \'%s\' --wildcard -v -k%s > hosts/%s/gobuster-results-%s-%s.txt' % (host[1], hostname, wordlist, ' --proxy %s --timeout 2ms' % (proxy) if proxy else '', hostname, hostname, host[1])) 
@@ -292,7 +322,7 @@ def nikto_test(web_apps, proxy):
     if not os.path.exists(nikto_path):
         os.system('mkdir %s' % nikto_path)
     for host in web_apps:
-        hostname = host[2] if host[2] else host[0]
+        hostname = host[2] if host[2] and os.path.isdir("./hosts/%s" % (host[2])) else host[0]
         print_info('Running nikto against %s://%s' % (host[1], hostname))
         print_info('nikto -host %s://%s%s > hosts/%s/nikto-results-%s-%s.txt' % (host[1], hostname, ' -useproxy %s' % (proxy) if proxy else '', hostname, hostname, host[1]))
         os.system('nikto -host %s://%s%s > hosts/%s/nikto-results-%s-%s.txt' % (host[1], hostname, ' -useproxy %s' % (proxy) if proxy else '', hostname, hostname, host[1]))
@@ -373,6 +403,8 @@ def nmap_scan(filename, top_ports='-p1-65535', tcp=True, single_file=False):
                 host = h.rstrip()
                 if not os.path.isdir("./hosts/%s" % (host.replace('/','-'))):
                     os.system("mkdir ./hosts/%s" % (host.replace('/','-')))
+                if not os.path.isfile("./hosts/%s/index.md" % (host.replace('/','-'))):
+                    hugo_leaf(host)
                 print_info('Running nmap scan of ports %s on %s' % (top_ports, host))
                 args = '-Pn -sV -O %s -oN hosts/%s/%s%s-scan-%s.nmap' % (top_ports, host.replace('/','-'), host.replace('/','-'), '' if tcp else '-udp', top_ports.replace(',','_'))
                 try:
