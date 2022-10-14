@@ -271,9 +271,9 @@ def gobuster_test(web_apps, proxy):
             return
     print_info("Starting gobuster scans")
     wordlist = '/usr/share/wordlists/averroes/raft-small-directories-lowercase.txt' # eventually give the option to specify this
-    gb_path = 'gobuster_results'
-    if not os.path.exists(gb_path):
-        os.system('mkdir %s' % (gb_path))
+    #gb_path = 'gobuster_results'
+    #if not os.path.exists(gb_path):
+    #    os.system('mkdir %s' % (gb_path))
     try:
         f = open(wordlist, 'r')
     except:
@@ -288,9 +288,11 @@ def gobuster_test(web_apps, proxy):
         pass
     for host in web_apps:
         hostname = host[2] if host[2] and os.path.isdir("./hosts/%s" % (host[2])) else host[0]
+        if not os.path.isdir("./hosts/%s/gobuster" % (hostname)):
+            os.system("mkdir ./hosts/%s/gobuster" % (hostname))
         print_info('Running gobuster against %s://%s' % (host[1], hostname))
-        print_info('gobuster dir -e -r -u \'%s://%s\' -w \'%s\' --wildcard -v -k%s > hosts/%s/gobuster-results-%s-%s.txt' % (host[1], hostname, wordlist, ' --proxy %s --timeout 2ms' % (proxy) if proxy else '', hostname, hostname, host[1])) 
-        os.system('gobuster dir -e -r -u \'%s://%s\' -w \'%s\' --wildcard -v -k%s > hosts/%s/gobuster-results-%s-%s.txt' % (host[1], hostname, wordlist, ' --proxy %s --timeout 2ms' % (proxy) if proxy else '', hostname, hostname, host[1])) 
+        print_info('gobuster dir -e -r -u \'%s://%s\' -w \'%s\' --wildcard -v -k%s > hosts/%s/gobuster/gobuster-results-%s-%s.txt' % (host[1], hostname, wordlist, ' --proxy %s --timeout 2ms' % (proxy) if proxy else '', hostname, hostname, host[1])) 
+        os.system('gobuster dir -e -r -u \'%s://%s\' -w \'%s\' --wildcard -v -k%s > hosts/%s/gobuster/gobuster-results-%s-%s.txt' % (host[1], hostname, wordlist, ' --proxy %s --timeout 2ms' % (proxy) if proxy else '', hostname, hostname, host[1])) 
         print_success('Completed gobuster scan for %s://%s' % (host[1], hostname))
 
 
@@ -317,15 +319,17 @@ def nikto_test(web_apps, proxy):
             print_err("Skipping the nikto scan.")
             return
         print_err('If the package doesn\'t exist, add the non-free repos to /etc/apt/sources-list')
-    nikto_path = 'nikto_results'
+    #nikto_path = './hosts/nikto'
     print_info("Starting nikto scans")
-    if not os.path.exists(nikto_path):
-        os.system('mkdir %s' % nikto_path)
+    #if not os.path.exists(nikto_path):
+    #    os.system('mkdir %s' % nikto_path)
     for host in web_apps:
         hostname = host[2] if host[2] and os.path.isdir("./hosts/%s" % (host[2])) else host[0]
+        if not os.path.isdir("./hosts/%s/nikto" % (hostname)):
+            os.system("mkdir ./hosts/%s/nikto" % (hostname))
         print_info('Running nikto against %s://%s' % (host[1], hostname))
-        print_info('nikto -host %s://%s%s > hosts/%s/nikto-results-%s-%s.txt' % (host[1], hostname, ' -useproxy %s' % (proxy) if proxy else '', hostname, hostname, host[1]))
-        os.system('nikto -host %s://%s%s > hosts/%s/nikto-results-%s-%s.txt' % (host[1], hostname, ' -useproxy %s' % (proxy) if proxy else '', hostname, hostname, host[1]))
+        print_info('nikto -host %s://%s%s > hosts/%s/nikto/nikto-results-%s-%s.txt' % (host[1], hostname, ' -useproxy %s' % (proxy) if proxy else '', hostname, hostname, host[1]))
+        os.system('nikto -host %s://%s%s > hosts/%s/nikto/nikto-results-%s-%s.txt' % (host[1], hostname, ' -useproxy %s' % (proxy) if proxy else '', hostname, hostname, host[1]))
         print_success('Completed nikto scan for %s://%s' % (host[1], hostname))
 
 
@@ -376,10 +380,12 @@ def nmap_scan(filename, top_ports='-p1-65535', tcp=True, single_file=False):
     nms = []
     if not os.path.isdir("./hosts"):
         os.system("mkdir ./hosts")
+    if not os.path.isdir("./hosts/nmaps"):
+        os.system("mkdir ./hosts/nmaps")
     if single_file:
         nm = nmap.PortScanner()
         print_info('Outputting as a single file')
-        args = '-Pn -sV -O %s -oN hosts/%s%s-scan-%s.nmap -iL %s' % (top_ports, filename, '' if tcp else '-udp', top_ports.replace(',','_'), filename)
+        args = '-Pn -sV -O %s -oN hosts/nmaps/%s%s-scan-%s.nmap -iL %s' % (top_ports, filename, '' if tcp else '-udp', top_ports.replace(',','_').replace(' ','').replace('-',''), filename)
         print_info('Running nmap scan of ports %s' % (top_ports))
         try:
             nm.scan(arguments=args)
@@ -403,13 +409,15 @@ def nmap_scan(filename, top_ports='-p1-65535', tcp=True, single_file=False):
                 host = h.rstrip()
                 if not os.path.isdir("./hosts/%s" % (host.replace('/','-'))):
                     os.system("mkdir ./hosts/%s" % (host.replace('/','-')))
-                if not os.path.isfile("./hosts/%s/index.md" % (host.replace('/','-'))):
-                    hugo_leaf(host)
+                if not os.path.isdir("./hosts/%s/nmaps" % (host.replace('/','-'))):
+                    os.system("mkdir ./hosts/%s/nmaps" % (host.replace('/','-')))
+                #if not os.path.isfile("./hosts/%s/index.md" % (host.replace('/','-'))):
+                #    hugo_leaf(host)
                 print_info('Running nmap scan of ports %s on %s' % (top_ports, host))
-                args = '-Pn -sV -O %s -oN hosts/%s/%s%s-scan-%s.nmap' % (top_ports, host.replace('/','-'), host.replace('/','-'), '' if tcp else '-udp', top_ports.replace(',','_'))
+                args = '-Pn -sV -O %s -oN hosts/%s/nmaps/%s%s-scan-%s.nmap' % (top_ports, host.replace('/','-'), host.replace('/','-'), '' if tcp else '-udp', top_ports.replace(',','_').replace(' ','').replace('-',''))
                 try:
                     nm.scan(host, arguments=args)
-                    f= open('%s-scan-%s%s.csv' % (host.replace('/','-'), top_ports.replace(',','_'), '' if tcp else '-udp'), 'w')
+                    f= open('%s-scan-%s%s.csv' % (host.replace('/','-'), top_ports.replace(',','_').replace(' ','').replace('-',''), '' if tcp else '-udp'), 'w')
                     f.write(nm.csv())
                     f.close()
                     print_success('Success')
