@@ -380,8 +380,8 @@ def nmap_scan(filename, top_ports='-p1-65535', tcp=True, single_file=False):
     nms = []
     if not os.path.isdir("./hosts"):
         os.system("mkdir ./hosts")
-    if not os.path.isdir("./hosts/nmaps"):
-        os.system("mkdir ./hosts/nmaps")
+    #if not os.path.isdir("./hosts/nmaps"):
+    #    os.system("mkdir ./hosts/nmaps")
     if single_file:
         nm = nmap.PortScanner()
         print_info('Outputting as a single file')
