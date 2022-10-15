@@ -2,6 +2,7 @@ import os
 import argparse
 import ipaddress
 import operator
+import re
 
 #backups = 'ask'
 
@@ -58,6 +59,113 @@ def format_hosts(path):
         tmp = format(ip)
         fmt += '[%s](%s)\n\n' % (tmp, tmp)
     return fmt
+
+#####################################################################################
+#
+# Format individual host page with results nmap/gobuster/nikto
+#
+#####################################################################################
+def format_stats(path):
+    dnames = []
+    fnames = []
+    fmt = ''
+    #print(path)
+    for dirpath, dirnames, filenames in os.walk(path):
+        dnames.extend(dirnames)
+        fnames = [item for item in filenames if '.md' not in item]
+        break
+    #for name in dnames:
+    #    fmt += '[%s](%s)\n' 
+    if "nmaps" in dnames:
+        temp = []
+        fmt += '''
+### [Nmap](nmaps)
+| Port | State | Service | Info |
+| :--- | :---- | :------ | :--- |
+'''
+        p = os.path.join(path, "nmaps")
+        for dirpath, dirnames, filenames in os.walk(p):
+            temp = [item for item in filenames if '.md' not in item]
+            break
+        for fn in temp:
+            i = open(os.path.join(p, fn))
+            lines = i.readlines()
+            i.close()
+            for line in lines:
+                #port = re.split(r'\t+', line)
+                #port = line.split()
+                if 'tcp' in line or 'udp' in line:
+                    port = line.split()
+                    #print(port)
+                    if len(port) == 3:
+                        fmt += '| %s | %s | %s | |\n' % (port[0], port[1], port[2])
+                        #print(port)
+                    else:
+                        fmt += '| %s | %s | %s | %s |\n' % (port[0], port[1], port[2], ' '.join(port[3:]))
+    if "nikto" in dnames:
+        temp = []
+        fmt += '''
+### [Nikto](nikto)
+'''
+        p = os.path.join(path, 'nikto')
+        for dirpath, dirnames, filenames in os.walk(p):
+            temp = [item for item in filenames if '.md' not in item]
+            break
+        for fn in temp:
+            i = open(os.path.join(p, fn))
+            lines = i.readlines()
+            i.close()
+            count = len(lines) - 10 # number of actual findings without header/footer info
+            fmt += '\n---------\nNumber of findings in %s: %d' % (fn, count)
+            if count < 50:
+                for line in lines:
+                    fmt += '\n%s' % (line)
+    if "gobuster" in dnames:
+        temp = []
+        status = []
+        p = os.path.join(path, 'gobuster')
+        counts = dict()
+        lines = []
+        s200 = ''
+        fmt += '''
+### [Gobuster](gobuster)
+| HTTP Response Status | Count |
+| :----- | :---- |
+'''
+        for dirpath, dirnames, filenames in os.walk(p):
+            temp = [item for item in filenames if '.md' not in item]
+            #print(temp)
+            break
+        for fn in temp:
+            i = open(os.path.join(p, fn))
+            lines = i.readlines()
+            i.close()
+            for line in lines:
+                if "Status:" in line:
+                    status.append(re.search(r'\((.*?)\)',line).group(1))
+                    if "Status: 200" in line:
+                        s200 += '>' + line + '\n'
+            #counts = dict()
+            for s in status:
+                counts[s] = counts.get(s, 0) + 1
+                #if s == "Status: 200":
+                #    print(path + ' ' + s)
+            #print(counts)
+        for j in sorted(counts.keys()):
+            #print(j)
+            fmt += '| %s | %d |\n' % (j.split()[1], counts[j])
+        if "Status: 200" in counts and counts["Status: 200"] < 50:
+            #print("Status: 200")
+            fmt += '\n**Paths found**\n\n' + s200
+            #for line in lines:
+            #    if "Status: 200" in line:
+            #        fmt += '%s\n' % (line)
+            #        print(line)
+    return fmt
+#    fmt = '''
+#| Port | Info |
+#| :----- | :---------- |
+#'''
 
 #####################################################################################
 #
@@ -163,6 +271,8 @@ title: %s
         f.write(format_content(path))
     elif title == "hosts":
         f.write(format_hosts(dpath))
+    elif "hosts" in path:
+        f.write(format_stats(dpath))
     else:
         f.write(format_misc(dpath))
     # create functions for the different known directories (nikto, gobuster, nmap, hosts, etc.)
