@@ -27,10 +27,10 @@ def format_misc(path):
     urls.sort()
     fmt = ''
     for url in urls:
-        fmt += '[%s](%s)\n\n' % (url, url)
+        fmt += '[%s](%s)  \n' % (url, url)
     for ip in ip_addr:
         tmp = format(ip)
-        fmt += '[%s](%s)\n\n' % (tmp, tmp)
+        fmt += '[%s](%s)  \n' % (tmp, tmp)
     return fmt
 
 #####################################################################################
@@ -54,10 +54,10 @@ def format_hosts(path):
     urls.sort()
     fmt = ''
     for url in urls:
-        fmt += '[%s](%s)\n\n' % (url, url)
+        fmt += '[%s](%s)  \n' % (url, url)
     for ip in ip_addr:
         tmp = format(ip)
-        fmt += '[%s](%s)\n\n' % (tmp, tmp)
+        fmt += '[%s](%s)  \n' % (tmp, tmp)
     return fmt
 
 #####################################################################################
@@ -119,7 +119,7 @@ def format_stats(path):
             fmt += '\n---------\nNumber of findings in %s: %d' % (fn, count)
             if count < 50:
                 for line in lines:
-                    fmt += '\n%s' % (line)
+                    fmt += '  \n%s' % (line.rstrip())
     if "gobuster" in dnames:
         temp = []
         status = []
@@ -144,7 +144,7 @@ def format_stats(path):
                 if "Status:" in line:
                     status.append(re.search(r'\((.*?)\)',line).group(1))
                     if "Status: 200" in line:
-                        s200 += '>' + line + '\n'
+                        s200 += '>' + line.rstrip() + '  \n'
             #counts = dict()
             for s in status:
                 counts[s] = counts.get(s, 0) + 1
@@ -228,7 +228,7 @@ def format_content(path):
         if row[1] != "zzzz":
             hostname = "[%s](hosts/%s)" % (row[1],row[1]) if os.path.exists(os.path.join(path, "hosts/%s" % (row[1]))) and row[1] else row[1]
         ports = row[2]
-        fmt += "| %s | %s | %s |\n" % (hostname, ip, ports)
+        fmt += "| %s | %s | %s |  \n" % (hostname, ip, ports)
     #print(fmt)
     return fmt
 
@@ -309,7 +309,7 @@ title: %s
             for line in lines:
                 if not "Status: 404" in line and line.strip():
                     #f.write('> ' + line.replace('#','\#').replace('=','-') + '\n')
-                    f.write(' ' + line.replace('#','\#').replace('=','-') + '\n')
+                    f.write('> ' + line.replace('#','\#').replace('=','').rstrip() + '  \n')
                     #if "[+]" in line:
                     #    print(line.rstrip())
             #f.write('`')
