@@ -1,0 +1,31 @@
+A way to automate the initial steps of a pentest
+
+usage: python3 autoscan.py {-i [host]|-I [hostfile]} {-p [ports]|-P [top ports]|-f|-q} -g -n -d -u
+Host selection (required):
+ -i [host] 	specify a single host
+ -I [hostfile] 	specify a file with one host per line
+Port selection:
+ -p 		specify the port or ports to scan
+ -P		specify the number of top ports to scan (defined by nmap)
+ -f		scan all ports (1-65535)
+ -q		ping scan only (no ports)
+Other options:
+ -d		scan all specified hosts (no ping scan)
+ -u		perform UDP scan
+ -g		run gobuster on all web hosts
+ -n		run nikto on all web hosts
+ -a		run amass enumeration on all hosts
+    --proxy 	proxy for gobuster and nikto [http(s)]://[host]:[port]
+
+Note: the gobuster scan will look for /usr/share/wordlists/averroes/raft-small-directories-lowercase.txt. If it doesn't find this file, it will look in the local folder. If it still doesn't find it, it will pull it from the internet (with a wget)
+
+There is no guarantee of compatibility with python2.x
+
+FUTURE WORK
+ - Create a menu for more personalized scans (just running gobuster/nikto and not nmap for example)
+ - Search ports for http/https (don't limit results to 80/443, also check if 80/443 are actually web ports)
+ - Specify in command line the wordlist for gobuster
+ - Better handle gobuster/nikto errors
+ - Add aquatone option
+ - Automate other types of scans as available
+ - Add social media scraping for a target (may require seperate project)
