@@ -66,12 +66,19 @@ def print_color(msg, color):
 #    different hosts (1 per line)
 #
 ###############################################################
-def get_hosts(hosts_file):
+def get_hosts(hosts_file, single=False):
     lines = []
+    tmp = []
     try:
-        f = open(hosts_file, 'r')
-        tmp = f.readlines()
-        tmp = [x.rstrip() for x in tmp]
+        if single:
+            print_info('Single host')
+            tmp.append(hosts_file)
+        else:
+            f = open(hosts_file, 'r')
+            #tmp = f.readlines()
+            #tmp.append(x.rstrip() for x in f.readlines())
+            for x in f.readlines():
+                tmp.append(x.rstrip())
         for line in tmp:
             if '/' in line:
                 try:
@@ -151,18 +158,20 @@ def show_hosts(hosts_list, message):
 #  - returns a list of active hosts
 #
 ###############################################################
-def find_active_hosts(hosts_list):
+def find_active_hosts(hosts_list, dirname):
     print_info("Finding active hosts")
     nm = []
     active_hosts = []
     inactive_hosts = []
-    if not os.path.isdir("./hosts"):
-        os.system("mkdir hosts")
+    if not os.path.isdir("./%s" % (dirname)):
+        os.system("mkdir %s" % (dirname))
+    #print(hosts_list)
     for num, host in enumerate(hosts_list):
-        if not os.path.isdir("./hosts/%s" % (host.replace('/','-'))):
-            os.system("mkdir ./hosts/%s" % (host.replace('/','-')))
+        #print(host)
+        if not os.path.isdir("./%s/%s" % (dirname, host.replace('/','-'))):
+            os.system("mkdir ./%s/%s" % (dirname, host.replace('/','-')))
         nm.append(nmap.PortScanner())
-        nm[num].scan(hosts=host, arguments='-sn -PE -PP -PM -oN hosts/%s/%s-pingsweep.nmap' %(host.replace('/','-'), host.replace('/','-')))
+        nm[num].scan(hosts=host, arguments='-sn -PE -PP -PM -oN %s/%s/%s-pingsweep.nmap' % (dirname, host.replace('/','-'), host.replace('/','-')))
         scanned_hosts = [(x, nm[num][x]['status']['state']) for x in nm[num].all_hosts()]
         inactive_hosts.append(host)
         for host_name, status in scanned_hosts:
@@ -176,10 +185,10 @@ def find_active_hosts(hosts_list):
 # Remove inactive hosts
 #
 ###############################################################
-def rem_hosts(hosts):
+def rem_hosts(hosts, dirname):
     print_info("Removing inactive hosts")
     for host in hosts:
-        os.system('rm -rf ./hosts/%s' % (host))
+        os.system('rm -rf ./%s/%s' % (dirname, host))
 
 ###############################################################
 #
@@ -188,8 +197,8 @@ def rem_hosts(hosts):
 #  - filename is the name of the file to write the hosts to
 #
 ###############################################################
-def write_hosts(hosts, filename):
-    f = open(filename, 'w+')
+def write_hosts(hosts, dirname, filename):
+    f = open('%s/%s' % (dirname, filename), 'w+')
     for host in hosts:
         f.write('%s\n' %(host))
 
@@ -236,8 +245,8 @@ def cleanup():
 #  - Write an index.md for hugo site
 #
 ###############################################################
-def hugo_leaf(host):
-    path = './hosts/%s/index.md' % (host.replace('/','-'))
+def hugo_leaf(host, dirname):
+    path = './dirname/%s/index.md' % (dirname, host.replace('/','-'))
     f = open(path, 'w')
     f.write(
             '''
@@ -249,7 +258,7 @@ title: %s
             ''' % (host, host)
             )
     f.close()
-    os.system("echo \"\n[%s](%s)\" >> ./hosts/_index.md" % (host, host))
+    os.system("echo \"\n[%s](%s)\" >> ./%s/_index.md" % (host, host, dirname))
 
 ###############################################################
 #
@@ -258,7 +267,7 @@ title: %s
 #   - each element should have the form [host, 'http'/'https', hostname]
 #
 ###############################################################
-def gobuster_test(web_apps, proxy):
+def gobuster_test(web_apps, dirname, proxy):
     if not which('gobuster'):
         print_err('Gobuster v3 is required for this operation.')
         print_err('It can be installed with the following command: sudo apt install -y snapd && sudo snap install go --classic && sudo ln -s /snap/bin/go /usr/bin/go && sudo go install github.com/OJ/gobuster/v3@latest && sudo cp /root/go/bin/gobuster /usr/bin/gobuster')
@@ -287,12 +296,12 @@ def gobuster_test(web_apps, proxy):
             pass
         pass
     for host in web_apps:
-        hostname = host[2] if host[2] and os.path.isdir("./hosts/%s" % (host[2])) else host[0]
-        if not os.path.isdir("./hosts/%s/gobuster" % (hostname)):
-            os.system("mkdir ./hosts/%s/gobuster" % (hostname))
+        hostname = host[2] if host[2] and os.path.isdir("./%s/%s" % (dirname, host[2])) else host[0]
+        if not os.path.isdir("./%s/%s/gobuster" % (dirname, hostname)):
+            os.system("mkdir ./%s/%s/gobuster" % (dirname, hostname))
         print_info('Running gobuster against %s://%s' % (host[1], hostname))
-        print_info('gobuster dir -e -r -u \'%s://%s\' -w \'%s\' --wildcard -v -k%s > hosts/%s/gobuster/gobuster-results-%s-%s.txt' % (host[1], hostname, wordlist, ' --proxy %s --timeout 2ms' % (proxy) if proxy else '', hostname, hostname, host[1])) 
-        os.system('gobuster dir -e -r -u \'%s://%s\' -w \'%s\' --wildcard -v -k%s > hosts/%s/gobuster/gobuster-results-%s-%s.txt' % (host[1], hostname, wordlist, ' --proxy %s --timeout 2ms' % (proxy) if proxy else '', hostname, hostname, host[1])) 
+        print_info('gobuster dir -e -r -u \'%s://%s\' -w \'%s\' --wildcard -v -k%s > %s/%s/gobuster/gobuster-results-%s-%s.txt' % (host[1], hostname, wordlist, ' --proxy %s --timeout 2ms' % (proxy) if proxy else '', dirname, hostname, hostname, host[1])) 
+        os.system('gobuster dir -e -r -u \'%s://%s\' -w \'%s\' --wildcard -v -k%s > %s/%s/gobuster/gobuster-results-%s-%s.txt' % (host[1], hostname, wordlist, ' --proxy %s --timeout 2ms' % (proxy) if proxy else '', dirname, hostname, hostname, host[1])) 
         print_success('Completed gobuster scan for %s://%s' % (host[1], hostname))
 
 
@@ -303,7 +312,7 @@ def gobuster_test(web_apps, proxy):
 #   - each element should have the form [host, 'http'/'https', hostname]
 #
 ###############################################################
-def nikto_test(web_apps, proxy):
+def nikto_test(web_apps, dirname, proxy):
     if not which('nikto'):
         print_err('Nikto is required for this operation. It can be installed with the following command: sudo apt install -y nikto')
         a = input("\033[1;35;40m[*] Install now? [y/n] \033[0;37;40m")
@@ -325,11 +334,11 @@ def nikto_test(web_apps, proxy):
     #    os.system('mkdir %s' % nikto_path)
     for host in web_apps:
         hostname = host[2] if host[2] and os.path.isdir("./hosts/%s" % (host[2])) else host[0]
-        if not os.path.isdir("./hosts/%s/nikto" % (hostname)):
-            os.system("mkdir ./hosts/%s/nikto" % (hostname))
+        if not os.path.isdir("./%s/%s/nikto" % (dirname,hostname)):
+            os.system("mkdir ./%s/%s/nikto" % (dirname,hostname))
         print_info('Running nikto against %s://%s' % (host[1], hostname))
-        print_info('nikto -host %s://%s%s > hosts/%s/nikto/nikto-results-%s-%s.txt' % (host[1], hostname, ' -useproxy %s' % (proxy) if proxy else '', hostname, hostname, host[1]))
-        os.system('nikto -host %s://%s%s > hosts/%s/nikto/nikto-results-%s-%s.txt' % (host[1], hostname, ' -useproxy %s' % (proxy) if proxy else '', hostname, hostname, host[1]))
+        print_info('nikto -host %s://%s%s > %s/%s/nikto/nikto-results-%s-%s.txt' % (host[1], hostname, ' -useproxy %s' % (proxy) if proxy else '', dirname, hostname, hostname, host[1]))
+        os.system('nikto -host %s://%s%s > %s/%s/nikto/nikto-results-%s-%s.txt' % (host[1], hostname, ' -useproxy %s' % (proxy) if proxy else '', dirname, hostname, hostname, host[1]))
         print_success('Completed nikto scan for %s://%s' % (host[1], hostname))
 
 
@@ -340,7 +349,7 @@ def nikto_test(web_apps, proxy):
 #  - amass_file is the output file for the enum
 #
 ###############################################################
-def amass_enum(hosts, amass_file):
+def amass_enum(hosts, dirname, amass_file):
     if not which('amass'):
         print_err('Amass is required for this operation. It can be installed with the following command: sudo snap install amass')
         a = input("\033[1;35;40m[*] Install now? [y/n] \033[0;37;40m")
@@ -361,7 +370,7 @@ def amass_enum(hosts, amass_file):
     args = ''
     for host in hosts:
         args += ' -d %s' % (host)
-    os.system("amass enum -passive%s -o %s" % (args, amass_file))
+    os.system("amass enum -passive%s -o ./%s/%s" % (args, dirname, amass_file))
 
 ###############################################################
 #
@@ -375,63 +384,39 @@ def amass_enum(hosts, amass_file):
 #
 ###############################################################
 #def nmap_scan(host_list, top_ports, tcp):
-def nmap_scan(filename, top_ports='-p1-65535', tcp=True, single_file=False):
+def nmap_scan(hosts, dirname, top_ports='-p1-65535', tcp=True):
     print_info("Starting nmap scans")
     nms = []
-    if not os.path.isdir("./hosts"):
-        os.system("mkdir ./hosts")
+    if not os.path.isdir("./%s" % (dirname)):
+        os.system("mkdir ./%s" % (dirname))
     #if not os.path.isdir("./hosts/nmaps"):
     #    os.system("mkdir ./hosts/nmaps")
-    if single_file:
+    for host in hosts:
         nm = nmap.PortScanner()
-        print_info('Outputting as a single file')
-        args = '-Pn -sV -O %s -oN hosts/nmaps/%s%s-scan-%s.nmap -iL %s' % (top_ports, filename, '' if tcp else '-udp', top_ports.replace(',','_').replace(' ','').replace('-',''), filename)
-        print_info('Running nmap scan of ports %s' % (top_ports))
+        #host = h.rstrip()
+        if not os.path.isdir("./%s/%s" % (dirname,host.replace('/','-'))):
+            os.system("mkdir ./%s/%s" % (dirname,host.replace('/','-')))
+        if not os.path.isdir("./%s/%s/nmaps" % (dirname,host.replace('/','-'))):
+            os.system("mkdir ./%s/%s/nmaps" % (dirname,host.replace('/','-')))
+        print_info('Running nmap scan of ports %s on %s' % (top_ports, host))
+        args = '-Pn -sV -O %s -oN %s/%s/nmaps/%s%s-scan-%s.nmap' % (top_ports, dirname, host.replace('/','-'), host.replace('/','-'), '' if tcp else '-udp', top_ports.replace(',','_').replace(' ','').replace('-',''))
         try:
-            nm.scan(arguments=args)
-        except nmap.PortScannerError:
-            print_err('Port scan failed, re-trying...')
-            time.sleep(2)
+            nm.scan(host, arguments=args)
+            f= open('%s-scan-%s%s.csv' % (host.replace('/','-'), top_ports.replace(',','_').replace(' ','').replace('-',''), '' if tcp else '-udp'), 'w')
+            f.write(nm.csv())
+            f.close()
+            print_success('Success')
+        except nmap.PortScannerError as e:
+            print_err('Port scan for %s failed, re-trying...' % (host))
             try:
-                nm.scan(arguments=args)
+                nm.scan(host, arguments=args)
+                print_success('Success')
+                f.write(nm.csv())
+                f.close()
             except nmap.PortScannerError:
-                print_err('Port scan failed again, quitting...')
-                sys.exit(1)
-        f= open('./hosts/%s-scan-%s%s.csv' % (filename, top_ports.replace(',','_'), '' if tcp else '-udp'), 'w')
-        f.write(nm.csv())
-        f.close()
+                print_err('Port scan failed again, skipping %s...' % (host))
+                pass 
         nms.append(nm)
-    else:
-        with open(filename) as fp:
-            hosts = fp.readlines()
-            for h in hosts:
-                nm = nmap.PortScanner()
-                host = h.rstrip()
-                if not os.path.isdir("./hosts/%s" % (host.replace('/','-'))):
-                    os.system("mkdir ./hosts/%s" % (host.replace('/','-')))
-                if not os.path.isdir("./hosts/%s/nmaps" % (host.replace('/','-'))):
-                    os.system("mkdir ./hosts/%s/nmaps" % (host.replace('/','-')))
-                #if not os.path.isfile("./hosts/%s/index.md" % (host.replace('/','-'))):
-                #    hugo_leaf(host)
-                print_info('Running nmap scan of ports %s on %s' % (top_ports, host))
-                args = '-Pn -sV -O %s -oN hosts/%s/nmaps/%s%s-scan-%s.nmap' % (top_ports, host.replace('/','-'), host.replace('/','-'), '' if tcp else '-udp', top_ports.replace(',','_').replace(' ','').replace('-',''))
-                try:
-                    nm.scan(host, arguments=args)
-                    f= open('%s-scan-%s%s.csv' % (host.replace('/','-'), top_ports.replace(',','_').replace(' ','').replace('-',''), '' if tcp else '-udp'), 'w')
-                    f.write(nm.csv())
-                    f.close()
-                    print_success('Success')
-                except nmap.PortScannerError as e:
-                    print_err('Port scan for %s failed, re-trying...' % (host))
-                    try:
-                        nm.scan(host, arguments=args)
-                        print_success('Success')
-                        f.write(nm.csv())
-                        f.close()
-                    except nmap.PortScannerError:
-                        print_err('Port scan failed again, skipping %s...' % (host))
-                        pass 
-                nms.append(nm)
     
     if not os.path.isdir("./csv_reports"):
         os.system("mkdir csv_reports")
@@ -447,10 +432,11 @@ def nmap_scan(filename, top_ports='-p1-65535', tcp=True, single_file=False):
 #
 ###############################################################
 def main():
-    parser = argparse.ArgumentParser(prog='autoscan.py', usage='python3 %(prog)s {-i [host]|-I [hostfile]} {-g|-n|-p [ports]|-P [top_ports]|-f|-d|-u|-q} {--proxy [http(s)]://[host][port]}', description='Automate scanning for pentests')
+    parser = argparse.ArgumentParser(prog='autoscan.py', usage='python3 %(prog)s {-i [host]|-I [hostfile]|--folder [directory]} {-g|-n|-p [ports]|-P [top_ports]|-f|-d|-u|-q} {--proxy [http(s)]://[host][port]}', description='Automate scanning for pentests')
     host_group = parser.add_mutually_exclusive_group(required=True)
     host_group.add_argument('-I', help='Host file - one host/CIDR per line')
     host_group.add_argument('-i', help='Single host')
+    host_group.add_argument('--folder', help='Choose a folder with several host files')
     parser.add_argument('-g', help='Perform gobuster scan on all web hosts', required=False, action="store_true")
     parser.add_argument('-n', help='Perform nikto scan on all web hosts', required=False, action="store_true")
     parser.add_argument('-a', help='Perform amass enumeration (amass enum -passive)', required=False, action="store_true")
@@ -467,67 +453,79 @@ def main():
 
     current_time = datetime.datetime.now()
     uniqueID = current_time.strftime('%Y-%m-%d-%H.%M.%S')
-    outfile = 'active-hosts.txt'
-    inactive_hosts = 'inactive-hosts.txt'
+    outfile = 'active-hosts'
+    #inactive_hosts = 'inactive-hosts.txt'
     active = []
     inactive = []
     webapps = []
 
-    hosts = []
+    hosts_list = {}
     if args.i:
-        temp_file = uniqueID + '-temp-hostfile.txt'
-        f = open(temp_file, "w")
-        f.write(args.i)
-        f.close()
-        hosts = get_hosts(temp_file)
-        os.system('rm %s' % (temp_file))
+        hosts_list['hosts'] = get_hosts(args.i,True)
 
     if args.I:
-        hosts = get_hosts(args.I)
+        hosts_list['hosts'] = get_hosts(args.I)
 
-    if args.a:
-        amass_file = "amass-enum-autoscan.txt"
-        amass_enum(hosts, amass_file)
-        tmp = hosts + get_hosts(amass_file)
-        hosts = [*set(tmp)]
+    if args.folder:
+        if os.path.isdir(args.folder):
+            path = args.folder
+            files = [f for f in os.listdir(args.folder) if os.path.isfile(os.path.join(path,f))]
+            for f in files:
+                hosts_list[f] = get_hosts(os.path.join(path,f))
+                # use the dictionary key as the host/{key}/scan.nmap for separate directories
+        else:
+            print_err("Folder or directory not found")
+            return
+                    
 
-    if not args.d:
-        active, inactive = find_active_hosts(hosts)     # ping scan (get a list of active and inactive hosts)
-        show_hosts(active, "The following hosts are active:")
-        rem_hosts(inactive)
-    elif args.d:
-        active = hosts
-        outfile = 'tmp_all_hosts.txt'
+    for fn,hosts in hosts_list.items():   # fn = file name, hosts = list of hosts in that file
+        key = fn.split('.',1)[0]
+        #print('./%s/%s-%s.txt' % (key,outfile,key))
+        #return
+        if args.a:
+            amass_file = "amass-enum-%s.txt" % (key)
+            amass_enum(hosts, key, amass_file)
+            tmp = hosts + get_hosts(amass_file)
+            hosts = [*set(tmp)]
 
-    if not active:      # if the active hosts array is empty, scan all hosts
-        active = hosts
-        show_hosts(active, "Either all hosts are down or are not responding to pings. The following hosts will be tested:")
+        if not args.d:
+            active, inactive = find_active_hosts(hosts, key)     # ping scan (get a list of active and inactive hosts)
+            show_hosts(active, "The following hosts are active:")
+            rem_hosts(inactive, key)
+        elif args.d:
+            active = hosts
+            #outfile = 'tmp_all_hosts.txt'
 
-    write_hosts(active, outfile)
-    write_hosts(inactive, inactive_hosts)
+        if not active:      # if the active hosts array is empty, scan all hosts
+            active = hosts
+            show_hosts(active, "Either all hosts are down or are not responding to pings. The following hosts will be tested:")
 
-    scan_file = outfile
+        writefile = '%s-%s.txt' % (outfile, key)
+        write_hosts(active, key, writefile)
+        #write_hosts(inactive, inactive_hosts)
 
-    nm_tcp = []
-    if args.f:
-        nm_tcp = nmap_scan(scan_file, '-p1-65535', not args.u)
-    elif args.p:
-        nm_tcp = nmap_scan(scan_file, '-p' + args.p, not args.u)
-    elif args.q:
-        pass
-    elif args.P:
-        nm_tcp = nmap_scan(scan_file, '--top-ports %d' % (args.P), not args.u)
-    else:
-        nm_tcp = nmap_scan(scan_file, '-p1-65535', not args.u)
+        #scan_file = outfile
+
+        nm_tcp = []
+        if args.f:
+            nm_tcp = nmap_scan(active, key, '-p1-65535', not args.u)
+        elif args.p:
+            nm_tcp = nmap_scan(active, key, '-p' + args.p, not args.u)
+        elif args.q:
+            pass
+        elif args.P:
+            nm_tcp = nmap_scan(active, key, '--top-ports %d' % (args.P), not args.u)
+        else:
+            nm_tcp = nmap_scan(active, key, '-p1-65535', not args.u)
     
-    if nm_tcp:
-        webapps = find_web_apps(nm_tcp)
+        if nm_tcp:
+            webapps = find_web_apps(nm_tcp)
 
-    if args.g:
-        gobuster_test(webapps, args.proxy)
+        if args.g:
+            gobuster_test(webapps, key, args.proxy)
 
-    if args.n:
-        nikto_test(webapps, args.proxy)
+        if args.n:
+            nikto_test(webapps, key, args.proxy)
 
     cleanup()
 
