@@ -5,6 +5,8 @@ import os, grp, pwd
 import time
 import ipaddress
 from shutil import which
+if os.geteuid() != 0:
+    exit("\033[1;31;40m[-] ERROR You are not running as root. Please run as root to ensure nmap proper function.\033[0;37;40m")
 try:
     import nmap
 except:

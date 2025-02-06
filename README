@@ -2,8 +2,9 @@ A way to automate the initial steps of a pentest
 
 usage: python3 autoscan.py {-i [host]|-I [hostfile]} {-p [ports]|-P [top ports]|-f|-q} -g -n -d -u
 Host selection (required):
- -i [host] 	specify a single host
- -I [hostfile] 	specify a file with one host per line
+ -i [host] 		specify a single host
+ -I [hostfile] 		specify a file with one host per line
+ --folder [directory]	specify a directory containing multiple text files with hosts (each file will get its own directory structure)
 Port selection:
  -p 		specify the port or ports to scan
  -P		specify the number of top ports to scan (defined by nmap)
