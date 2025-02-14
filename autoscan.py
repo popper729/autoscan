@@ -475,7 +475,7 @@ def main():
             path = args.folder
             files = [f for f in os.listdir(args.folder) if os.path.isfile(os.path.join(path,f))]
             for f in files:
-                hosts_list[f] = get_hosts(path,f)
+                hosts_list[f] = get_hosts(f, path)
                 # use the dictionary key as the host/{key}/scan.nmap for separate directories
         else:
             print_err("Folder or directory not found")
