@@ -68,7 +68,7 @@ def print_color(msg, color):
 #    different hosts (1 per line)
 #
 ###############################################################
-def get_hosts(hosts_file, single=False):
+def get_hosts(hosts_file, dirname='.', single=False):
     lines = []
     tmp = []
     try:
@@ -76,7 +76,7 @@ def get_hosts(hosts_file, single=False):
             print_info('Single host')
             tmp.append(hosts_file)
         else:
-            f = open(hosts_file, 'r')
+            f = open(os.path.join(dirname, hosts_file), 'r')
             #tmp = f.readlines()
             #tmp.append(x.rstrip() for x in f.readlines())
             for x in f.readlines():
@@ -475,7 +475,7 @@ def main():
             path = args.folder
             files = [f for f in os.listdir(args.folder) if os.path.isfile(os.path.join(path,f))]
             for f in files:
-                hosts_list[f] = get_hosts(os.path.join(path,f))
+                hosts_list[f] = get_hosts(path,f)
                 # use the dictionary key as the host/{key}/scan.nmap for separate directories
         else:
             print_err("Folder or directory not found")
