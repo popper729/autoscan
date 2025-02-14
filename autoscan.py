@@ -372,6 +372,8 @@ def amass_enum(hosts, dirname, amass_file):
     args = ''
     for host in hosts:
         args += ' -d %s' % (host)
+    if not os.path.isdir("./%s" % (dirname)):
+        os.system("mkdir %s" % (dirname))
     os.system("amass enum -passive%s -o ./%s/%s" % (args, dirname, amass_file))
 
 ###############################################################
