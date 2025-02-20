@@ -4,6 +4,7 @@ import datetime
 import os, grp, pwd
 import time
 import ipaddress
+from urllib.parse import urlparse
 from shutil import which
 if os.geteuid() != 0:
     exit("\033[1;31;40m[-] ERROR You are not running as root. Please run as root to ensure nmap proper function.\033[0;37;40m")
@@ -82,6 +83,7 @@ def get_hosts(hosts_file, dirname='.', single=False):
             for x in f.readlines():
                 tmp.append(x.rstrip())
         for line in tmp:
+            print_info(line)
             if '/' in line:
                 try:
                     ip = ipaddress.IPv4Network(line)
@@ -90,7 +92,13 @@ def get_hosts(hosts_file, dirname='.', single=False):
                     for i in tmp:
                         lines.append(i)
                 except:
-                    lines.append(line)
+                    try:
+                        url = urlparse(line)
+                        if url.netloc:
+                            print_info("URL found")
+                            lines.append(url.netloc)
+                    except:
+                        lines.append(line)
             elif '-' in line:
                 tmp = line.split('-')
                 try:
@@ -102,14 +110,14 @@ def get_hosts(hosts_file, dirname='.', single=False):
                 except:
                     lines.append(line)
             else:
-                print_info("Normal IP found")
+                print_info("Normal Host/IP found")
                 lines.append(line)
         print_info('Hosts list generated')
-        return lines
+        return list(set(lines))
     except Exception as e:
         print(e)
-        print_err("Host file does not exist")
-        sys.exit(1)
+        print_err("Host file '%s' does not exist" % (os.path.join(dirname, hosts_file)))
+        #sys.exit(1)
 
 ###############################################################
 #
@@ -465,7 +473,7 @@ def main():
 
     hosts_list = {}
     if args.i:
-        hosts_list['hosts'] = get_hosts(args.i,True)
+        hosts_list['hosts'] = get_hosts(args.i,'.',True)
 
     if args.I:
         hosts_list['hosts'] = get_hosts(args.I)
@@ -489,8 +497,14 @@ def main():
         if args.a:
             amass_file = "amass-enum-%s.txt" % (key)
             amass_enum(hosts, key, amass_file)
-            tmp = hosts + get_hosts(amass_file)
-            hosts = [*set(tmp)]
+            #tmp = get_hosts(amass_file, key)
+            if os.path.isfile("%s/%s" % (key, amass_file)):
+                tmp = hosts + get_hosts(amass_file, key)
+                hosts_list[fn] = [*set(tmp)]
+            else:
+                pass
+                #hosts_list[fn] = [*set(hosts)]
+            #hosts_list[fn] = [*set(tmp)]
 
         if not args.d:
             active, inactive = find_active_hosts(hosts, key)     # ping scan (get a list of active and inactive hosts)
