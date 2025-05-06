@@ -3,9 +3,9 @@
 > Run with ./autoscan.sh with no arguments as long as autoscan.conf is properly defined.
 
 ## How to use
-> Install the required tools (manually or using setup.sh)
-> Configure autoscan.conf (example found below or in the repo)
-> Run with autoscan.sh (a wrapper for autoscan.py that sets up a venv and runs the script) or directly with autoscan.py
+> Install the required tools (manually or using setup.sh)  
+> Configure autoscan.conf (example found below or in the repo)  
+> Run with autoscan.sh (a wrapper for autoscan.py that sets up a venv and runs the script) or directly with autoscan.py  
 
 ## Running with autoscan.py
 # To run without autoscan.conf, the following command-line arguments can be used:
