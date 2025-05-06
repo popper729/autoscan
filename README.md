@@ -1,4 +1,4 @@
-### Autoscan
+# Autoscan
 
 > Run with ./autoscan.sh with no arguments as long as autoscan.conf is properly defined.
 
@@ -8,7 +8,7 @@
 > Run with autoscan.sh (a wrapper for autoscan.py that sets up a venv and runs the script) or directly with autoscan.py  
 
 ## Running with autoscan.py
-# To run without autoscan.conf, the following command-line arguments can be used:
+### To run without autoscan.conf, the following command-line arguments can be used:
 ```
 -I, --input-file <file>        File with one host/CIDR per line (e.g., hosts.txt)
 -i, --input-host <host>        Single host or IP (e.g., 192.168.1.1 or example.com)
@@ -41,7 +41,7 @@
 ```
 
 ## Autoscan.conf
-# The following options can be used within autoscan.conf:
+### The following options can be used within autoscan.conf:
 ```
 [Input]
 input_file          File with one host/CIDR per line (string, e.g., "hosts.txt", default: None)
@@ -60,8 +60,8 @@ ping_only           Enable ping-only scan (boolean, e.g., "false", default: "fal
 nmap_threads        Number of threads for Nmap scans (integer, e.g., "8", default: "8")
 nuclei_concurrency  Concurrency level for Nuclei scans (string, e.g., "50", default: "50")
 nuclei_threads      Number of threads for Nuclei scans (integer, e.g., "4", default: "4")
-feroxbuster_threads Number of threads for Feroxbuster scans (string, e.g., "20", default: "20")
-feroxbuster_parallel_threads Number of parallel threads for Feroxbuster (integer, e.g., "4", default: "4")
+feroxbuster_threads 	Number of threads for Feroxbuster scans (string, e.g., "20", default: "20")
+feroxbuster_parallel_threads 	Number of parallel threads for Feroxbuster (integer, e.g., "4", default: "4")
 subfinder_threads   Number of threads for Subfinder scans (integer, e.g., "4", default: "4")
 wordlist            Path to wordlist for Feroxbuster (string, e.g., "/snap/feroxbuster/common/raft-small-directories-lowercase.txt", default: "/snap/feroxbuster/common/raft-small-directories-lowercase.txt")
 [Scans]
@@ -78,7 +78,7 @@ hugo_dir            Directory for Hugo site (string, e.g., "./hugo_site", defaul
 hugo_theme          URL of Hugo theme repository (string, e.g., "https://github.com/matcornic/hugo-theme-learn.git", default: "https://github.com/matcornic/hugo-theme-learn.git")
 ```
 
-## Example autoscan.conf file:
+### Example autoscan.conf file:
 
 ```
 [Input]
