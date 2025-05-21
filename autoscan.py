@@ -110,10 +110,8 @@ class ScanUtils:
         try:
             os.makedirs(path, exist_ok=True)
             os.chmod(path, 0o755)
-            log_message(f"Ensured directory exists: {path}", "info")
         except OSError as e:
             log_message(f"Failed to create directory {path}: {e}", "error")
-            raise
 
     @staticmethod
     def install_tool(tool_name: str, install_cmd: str, apt_package: Optional[str] = None, fallback_cmd: Optional[str] = None) -> bool:
@@ -300,6 +298,9 @@ class ScanUtils:
     @staticmethod
     def run_threaded(tasks: List[Tuple[callable, Any]], max_workers: int, desc: str = "Processing") -> List[Any]:
         """Runs tasks concurrently with ThreadPoolExecutor."""
+        if not tasks:
+            log_message(f"No tasks to run for {desc}, skipping", "info")
+            return []
         results = []
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_to_task = {executor.submit(task[0], *task[1]): task for task in tasks}
@@ -340,13 +341,12 @@ class NmapTool(Tool):
     enabled_by_default = True
 
     def create_host_directory(self, base_dir: str, dirname: str, host: str, hostname: Optional[str] = None) -> str:
-        """Creates a directory for a host, prioritizing hostname, keeping dots."""
-        host_dir = (hostname or host).replace('/', '-').replace(':', '-')
+        """Creates a directory for a host, prioritizing hostname."""
+        host_dir = (hostname or host).replace('/', '-').replace(':', '-').replace('.', '-')
         if not hostname and ScanUtils.validate_input(host)[0] == 'ip':
             log_message(f"Using IP {host} for directory; expected hostname, check input", "error")
         full_path = os.path.join(base_dir, dirname, host_dir)
         ScanUtils.ensure_directory(full_path)
-        log_message(f"Created host directory: {full_path}", "info")
         return host_dir
 
     def scan_host_status(self, host: str, base_dir: str, dirname: str, hostname: Optional[str] = None, retries: int = 3) -> Tuple[List[Tuple[str, str]], Optional[str]]:
@@ -380,6 +380,9 @@ class NmapTool(Tool):
     def find_active_hosts(self, hosts: List[Tuple[str, str, Optional[str]]], base_dir: str, dirname: str) -> Tuple[List[Tuple[str, str, Optional[str]]], List[Tuple[str, str, Optional[str]]]]:
         """Identifies active hosts via ping scans."""
         log_message("Finding active hosts", "info")
+        if not hosts:
+            log_message("No hosts provided, returning empty results", "info")
+            return [], hosts
         active_hosts = []
         inactive_hosts = hosts.copy()
         max_workers = min(self.config.getint('Tools', 'nmap_threads', fallback=8), len(hosts))
@@ -402,6 +405,9 @@ class NmapTool(Tool):
     def scan_ports(self, hosts: List[Tuple[str, str, Optional[str]]], base_dir: str, dirname: str, top_ports: str, tcp: bool) -> List[nmap.PortScanner]:
         """Performs Nmap port scans on active hosts."""
         log_message("Starting nmap scans", "info")
+        if not hosts:
+            log_message("No hosts to scan, returning empty results", "info")
+            return []
         nms = []
         ScanUtils.ensure_directory(os.path.join(base_dir, dirname))
         max_workers = min(self.config.getint('Tools', 'nmap_threads', fallback=8), len(hosts))
@@ -409,9 +415,7 @@ class NmapTool(Tool):
         def scan_single_host(host, original, hostname):
             nm = nmap.PortScanner()
             host_dir = self.create_host_directory(base_dir, dirname, host, hostname)
-            nmaps_dir = os.path.join(base_dir, dirname, host_dir, 'nmaps')
-            ScanUtils.ensure_directory(nmaps_dir)
-            log_message(f"Ensured nmaps directory: {nmaps_dir}", "info")
+            ScanUtils.ensure_directory(f"{base_dir}/{dirname}/{host_dir}/nmaps")
             scan_type = "" if tcp else "-udp"
             port_slug = top_ports.replace(',', '_').replace(' ', '').replace('-', '')
             target = (hostname or host).replace('/', '-').replace(':', '-')
@@ -470,6 +474,7 @@ class NmapTool(Tool):
             ScanUtils.write_hosts(active_hosts, base_dir, dirname, f"active-hosts-{dirname}.txt", checkpoint=True)
             return {"active_hosts": active_hosts, "inactive_hosts": inactive_hosts, "scanners": [], "webapps": []}
         
+        # Filter active hosts to prevent directories for inactive ones
         active_hosts, _ = self.find_active_hosts(hosts, base_dir, dirname) if not self.args.no_ping else (hosts, [])
         scanners = self.scan_ports(active_hosts, base_dir, dirname, ports, not self.args.udp)
         live_hosts = []
@@ -479,6 +484,7 @@ class NmapTool(Tool):
                 if h in nm.all_hosts():
                     found = True
                     break
+                # Check if hostname matches
                 for scanned_host in nm.all_hosts():
                     if nm[scanned_host].hostname() == h:
                         found = True
@@ -541,6 +547,9 @@ class NucleiTool(Tool):
 
     def scan(self, web_apps: List[List[str]], base_dir: str, dirname: str) -> None:
         """Performs Nuclei scans on web applications."""
+        if not web_apps:
+            log_message("No web apps to scan with Nuclei, skipping", "info")
+            return
         snap_cmd = "sudo apt install -y snapd && sudo snap install nuclei"
         binary_cmd = "git clone https://github.com/projectdiscovery/nuclei.git /tmp/nuclei && cd /tmp/nuclei && go build -o nuclei ./cmd/nuclei && sudo mv nuclei /usr/local/bin/ && sudo chmod +x /usr/local/bin/nuclei && cd - && rm -rf /tmp/nuclei"
         if not ScanUtils.install_tool("nuclei", snap_cmd, apt_package="snapd", fallback_cmd=binary_cmd):
@@ -554,9 +563,8 @@ class NucleiTool(Tool):
             if ScanUtils.validate_input(target)[0] == 'ip':
                 log_message(f"IP {target} used as target for Nuclei; expected hostname", "error")
             host_dir = NmapTool(self.config, self.args).create_host_directory(base_dir, dirname, target, hostname=hostname)
-            nuclei_dir = os.path.join(base_dir, dirname, host_dir, 'nuclei')
-            ScanUtils.ensure_directory(nuclei_dir)
-            output_file = f"{nuclei_dir}/nuclei-results-{target.replace('/', '-').replace(':', '-')}-{protocol}.txt"
+            ScanUtils.ensure_directory(f"{base_dir}/{dirname}/{host_dir}/nuclei")
+            output_file = f"{base_dir}/{dirname}/{host_dir}/nuclei/nuclei-results-{target.replace('.', '-')}-{protocol}.txt"
             cmd = ["nuclei", "-u", f"{protocol}://{target}", "-o", output_file, "-silent", "-c", concurrency]
             if self.args.proxy:
                 cmd.extend(["-proxy", self.args.proxy])
@@ -587,6 +595,9 @@ class FeroxbusterTool(Tool):
 
     def scan(self, web_apps: List[List[str]], base_dir: str, dirname: str) -> None:
         """Performs Feroxbuster scans on web applications."""
+        if not web_apps:
+            log_message("No web apps to scan with Feroxbuster, skipping", "info")
+            return
         snap_cmd = "sudo apt install -y snapd && sudo snap install feroxbuster --classic"
         binary_cmd = "git clone https://github.com/epi052/feroxbuster.git /tmp/feroxbuster && cd /tmp/feroxbuster && cargo build --release && sudo mv target/release/feroxbuster /usr/local/bin/ && sudo chmod +x /usr/local/bin/feroxbuster && cd - && rm -rf /tmp/feroxbuster"
         if not ScanUtils.install_tool("feroxbuster", snap_cmd, apt_package="snapd", fallback_cmd=binary_cmd):
@@ -599,7 +610,7 @@ class FeroxbusterTool(Tool):
                 log_message(f"Downloaded wordlist to {wordlist}", "success")
             except subprocess.CalledProcessError:
                 log_message("Failed to download wordlist. Skipping feroxbuster.", "error")
-            return
+                return
         threads = self.config.get('Tools', 'feroxbuster_threads', fallback='20')
         max_workers = self.config.getint('Tools', 'feroxbuster_parallel_threads', fallback=4)
 
@@ -608,9 +619,8 @@ class FeroxbusterTool(Tool):
             if ScanUtils.validate_input(target)[0] == 'ip':
                 log_message(f"IP {target} used as target for Feroxbuster; expected hostname", "error")
             host_dir = NmapTool(self.config, self.args).create_host_directory(base_dir, dirname, target, hostname=hostname)
-            feroxbuster_dir = os.path.join(base_dir, dirname, host_dir, 'feroxbuster')
-            ScanUtils.ensure_directory(feroxbuster_dir)
-            output_file = f"{feroxbuster_dir}/feroxbuster-results-{target.replace('/', '-').replace(':', '-')}-{protocol}.txt"
+            ScanUtils.ensure_directory(f"{base_dir}/{dirname}/{host_dir}/feroxbuster")
+            output_file = f"{base_dir}/{dirname}/{host_dir}/feroxbuster/feroxbuster-results-{target.replace('.', '-')}-{protocol}.txt"
             cmd = ["feroxbuster", "-u", f"{protocol}://{target}", "-w", wordlist, "-o", output_file, "--silent", "-t", threads]
             if self.args.proxy:
                 cmd.extend(["-proxy", self.args.proxy])
@@ -670,8 +680,9 @@ class HugoTool(Tool):
         try:
             dirs = next(os.walk(path))[1]
             log_message(f"Host directories found: {dirs}", "info")
-            domains = sorted(dirs)
-            return ''.join(f'[{domain}]({domain})  \n' for domain in domains)
+            domains = [dr.replace('-', '.') for dr in dirs]
+            domains.sort()
+            return ''.join(f'[{domain}]({domain.replace(".", "-")})  \n' for domain in domains)
         except StopIteration:
             log_message(f"Failed to read directory: {path}", "error")
             return ''
@@ -824,7 +835,7 @@ class HugoTool(Tool):
                                 if not parts[4] or not parts[4].isdigit():
                                     continue
                                 ip = parts[0]
-                                hostname = parts[1] or hdir
+                                hostname = parts[1] or hdir.replace('-', '.')
                                 port = parts[4]
                                 seen_ports.add(port)
                         except (IOError, UnicodeDecodeError) as e:
@@ -843,7 +854,7 @@ class HugoTool(Tool):
 
             rows.sort(key=lambda x: x[0])
             for hostname, ip, ports in rows:
-                dir_name = hostname
+                dir_name = hostname.replace('.', '-')
                 hn_link = f'[{hostname}]({dirname}/{dir_name})' if os.path.exists(os.path.join(hugo_dir, dirname, dir_name)) else hostname
                 ip_display = ip if ip != 'N/A' else '-'
                 fmt += f'| {hn_link} | {ip_display} | {ports} |  \n'
@@ -856,26 +867,33 @@ class HugoTool(Tool):
         """Backs up a Hugo file based on the specified mode."""
         log_message(f"Backing up file: {filename} with mode: {backup_mode}", "info")
         if os.path.exists(filename):
-            if backup_mode == 'replace':
-                subprocess.run(['mv', filename, f'{filename}.bak'], check=True)
-            elif backup_mode == 'unique':
-                timestamp = time.strftime('%Y-%m-%d-%H:%M', time.localtime())
-                subprocess.run(['mv', filename, f'{filename}.{timestamp}.bak'], check=True)
-            else:
-                bak_file = f'{filename}.bak'
-                if os.path.exists(bak_file):
-                    choice = input(f"{bak_file} exists. Replace? [y/n]: ") or 'n'
-                    if choice.lower() == 'y':
-                        subprocess.run(['mv', filename, bak_file], check=True)
+            try:
+                if backup_mode == 'replace':
+                    subprocess.run(['mv', '-f', filename, f'{filename}.bak'], check=True)
+                elif backup_mode == 'unique':
+                    timestamp = time.strftime('%Y-%m-%d-%H:%M', time.localtime())
+                    subprocess.run(['mv', filename, f'{filename}.{timestamp}.bak'], check=True)
+                else:  # ask
+                    bak_file = f'{filename}.bak'
+                    if os.path.exists(bak_file):
+                        choice = input(f"{bak_file} exists. Replace? [y/n]: ") or 'n'
+                        if choice.lower() == 'y':
+                            subprocess.run(['mv', '-f', filename, bak_file], check=True)
+                        else:
+                            timestamp = time.strftime('%Y-%m-%d-%H:%M', time.localtime())
+                            subprocess.run(['mv', filename, f'{filename}.{timestamp}.bak'], check=True)
                     else:
-                        timestamp = time.strftime('%Y-%m-%d-%H:%M', time.localtime())
-                        subprocess.run(['mv', filename, f'{filename}.{timestamp}.bak'], check=True)
-                else:
-                    subprocess.run(['mv', filename, bak_file], check=True)
+                        subprocess.run(['mv', filename, bak_file], check=True)
+                log_message(f"Backup completed for {filename}", "info")
+            except subprocess.CalledProcessError as e:
+                log_message(f"Failed to backup {filename}: {str(e)}", "error")
         alt_filename = filename.replace('_index.md', 'index.md') if '_index.md' in filename else filename.replace('index.md', '_index.md')
         if os.path.exists(alt_filename):
-            subprocess.run(['mv', alt_filename, f'{alt_filename}.bak'], check=True)
-        log_message(f"Backup completed for {filename}", "info")
+            try:
+                subprocess.run(['mv', '-f', alt_filename, f'{alt_filename}.bak'], check=True)
+                log_message(f"Backup completed for {alt_filename}", "info")
+            except subprocess.CalledProcessError as e:
+                log_message(f"Failed to backup {alt_filename}: {str(e)}", "error")
 
     def write_branch(self, path: str, dirname: str, backup_mode: str, all_dir_content: Optional[Dict[str, str]] = None) -> None:
         """Writes a Hugo branch page (index or _index.md)."""
@@ -891,10 +909,6 @@ class HugoTool(Tool):
 
         if title == 'content' and all_dir_content:
             content = '\n'.join(all_dir_content.values()) or '\nNo scan results available across all directories.\n'
-        elif os.path.basename(path) not in ['content', dirname]:
-            content = self.format_stats(path)
-            if not content.strip():
-                content = '\nNo scan results available.\n'
         else:
             content = self.format_stats(path) if title != 'content' and title != dirname else self.format_content(path, dirname) if title == 'content' else self.format_hosts(path)
             if not content.strip():
@@ -917,7 +931,6 @@ class HugoTool(Tool):
             log_message(f"Generated branch page: {outfile}", "success")
         except Exception as e:
             log_message(f"Failed to write branch page {outfile}: {str(e)}", "error")
-            raise
 
     def write_leaf(self, path: str, backup_mode: str) -> None:
         """Writes a Hugo leaf page (index.md) for tool results."""
@@ -946,12 +959,12 @@ class HugoTool(Tool):
                         log_message(f"Error reading {fname}: {e}", "error")
             else:
                 content += f'No results available for {title}.\n'
+
             with open(outfile, 'w') as f:
                 f.write(header + content)
             log_message(f"Generated leaf page: {outfile}", "success")
         except Exception as e:
             log_message(f"Failed to write leaf page {outfile}: {str(e)}", "error")
-            raise
 
     def update_structure(self, base_dir: str, dirname: str, backup_mode: str, hosts: Optional[List[Tuple[str, str, Optional[str]]]] = None) -> None:
         """Updates Hugo site structure with scan results."""
@@ -959,36 +972,31 @@ class HugoTool(Tool):
         hugo_dir = os.path.join(base_dir, dirname)
         ScanUtils.ensure_directory(hugo_dir)
         try:
-            host_dirs = [d for d in next(os.walk(hugo_dir))[1] if d not in ['nmaps', 'nuclei', 'feroxbuster']]
-            log_message(f"Found host directories: {host_dirs}", "info")
-            
-            if not hosts:
-                hosts = [(d, d, d) for d in host_dirs]
-            else:
-                hosts = [(host, original, hostname or host) for host, original, hostname in hosts]
-
-            for host, _, hostname in hosts:
-                host_dir = os.path.join(hugo_dir, hostname)
+            # Process each host
+            for host, _, hostname in (hosts or []):
+                host_dir = os.path.join(hugo_dir, hostname or host)
                 log_message(f"Checking host directory: {host_dir} (exists: {os.path.exists(host_dir)})", "info")
-                if not os.path.exists(host_dir):
-                    log_message(f"Host directory {host_dir} does not exist, creating", "info")
-                    ScanUtils.ensure_directory(host_dir)
-
-                subdirs = ['nmaps', 'nuclei', 'feroxbuster']
-                log_message(f"Processing subdirectories: {subdirs}", "info")
-                for subdir in subdirs:
-                    subdir_path = os.path.join(host_dir, subdir)
-                    log_message(f"Checking subdirectory: {subdir_path} (exists: {os.path.exists(subdir_path)})", "info")
-                    ScanUtils.ensure_directory(subdir_path)
-                    self.write_leaf(subdir_path, backup_mode)
-
-                self.write_branch(host_dir, dirname, backup_mode)
-
+                if os.path.exists(host_dir):
+                    # Process subdirectories
+                    subdirs = ['nmaps', 'nuclei', 'feroxbuster']
+                    log_message(f"Processing subdirectories: {subdirs}", "info")
+                    for subdir in subdirs:
+                        subdir_path = os.path.join(host_dir, subdir)
+                        log_message(f"Checking subdirectory: {subdir_path} (exists: {os.path.exists(subdir_path)})", "info")
+                        if os.path.exists(subdir_path):
+                            self.write_leaf(subdir_path, backup_mode)
+                        else:
+                            log_message(f"Subdirectory {subdir_path} does not exist, creating empty leaf page", "info")
+                            self.write_leaf(subdir_path, backup_mode)  # Create even if empty
+                    # Write host directory index
+                    self.write_branch(host_dir, dirname, backup_mode)
+                else:
+                    log_message(f"Host directory {host_dir} does not exist, skipping", "error")
+            # Write root index
             self.write_branch(hugo_dir, dirname, backup_mode)
             log_message(f"Hugo structure updated in {hugo_dir}", "success")
         except Exception as e:
             log_message(f"Failed to update Hugo structure for {dirname}: {str(e)}", "error")
-            raise
 
     def run(self, hosts: List[Tuple[str, str, Optional[str]]], base_dir: str, dirname: str) -> Dict[str, Any]:
         """Generates Hugo site with scan results."""
@@ -1022,6 +1030,11 @@ class ToolRegistry:
         for fname, hosts in hosts_list.items():
             results = {}
             current_hosts = hosts.copy()
+            log_message(f"Processing file: {fname} with hosts: {current_hosts}", "info")
+            if not current_hosts:
+                log_message(f"No valid hosts in {fname}, skipping", "info")
+                all_results[fname] = results
+                continue
             for tool in self.get_enabled_tools():
                 log_message(f"Executing {tool.name} for {fname} with hosts: {current_hosts}", "info")
                 results[tool.name] = tool.run(current_hosts, base_dir, fname)
